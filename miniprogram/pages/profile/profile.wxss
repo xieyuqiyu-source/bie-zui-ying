@@ -1,0 +1,26 @@
+.small {
+  font-size: 58rpx;
+}
+
+.profile {
+  margin-top: 34rpx;
+  padding: 34rpx;
+}
+
+.title {
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.name {
+  margin-top: 14rpx;
+  font-size: 44rpx;
+  font-weight: 900;
+}
+
+.stats {
+  margin-top: 12rpx;
+  font-size: 30rpx;
+  font-weight: 800;
+}
+

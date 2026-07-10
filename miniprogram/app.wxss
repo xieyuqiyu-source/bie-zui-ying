@@ -1,0 +1,91 @@
+page {
+  min-height: 100vh;
+  color: #111;
+  background: #f7d84a;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+}
+
+button {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: visible;
+  background: transparent;
+}
+
+button::after {
+  border: 0;
+}
+
+.page {
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 40rpx 32rpx;
+  overflow-x: hidden;
+}
+
+.brand {
+  font-size: 76rpx;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.subtitle {
+  margin-top: 16rpx;
+  font-size: 30rpx;
+  font-weight: 700;
+}
+
+.comic-panel {
+  border: 6rpx solid #111;
+  border-radius: 8rpx;
+  background: #fff;
+  box-shadow: 10rpx 10rpx 0 #111;
+}
+
+.primary-button,
+.secondary-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  min-height: 104rpx;
+  padding: 18rpx 20rpx;
+  border: 6rpx solid #111;
+  border-radius: 8rpx;
+  box-sizing: border-box;
+  font-size: 34rpx;
+  font-weight: 900;
+  line-height: 1.2;
+  white-space: normal;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.primary-button {
+  color: #fff;
+  background: #e33124;
+  box-shadow: 8rpx 8rpx 0 #111;
+}
+
+.secondary-button {
+  color: #111;
+  background: #fff;
+}
+
+.muted {
+  color: #555;
+}
+
+.tag {
+  display: inline-flex;
+  padding: 8rpx 18rpx;
+  border: 4rpx solid #111;
+  border-radius: 999rpx;
+  background: #fff;
+  font-size: 24rpx;
+  font-weight: 900;
+}

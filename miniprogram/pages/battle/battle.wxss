@@ -1,0 +1,66 @@
+.battle {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  box-sizing: border-box;
+  padding: 46rpx 32rpx;
+  background: #e33124;
+  color: #fff;
+}
+
+.top {
+  text-align: center;
+}
+
+.time {
+  display: inline-flex;
+  min-width: 180rpx;
+  justify-content: center;
+  padding: 14rpx 24rpx;
+  border: 6rpx solid #111;
+  border-radius: 8rpx;
+  background: #f7d84a;
+  color: #111;
+  font-size: 36rpx;
+  font-weight: 900;
+}
+
+.score {
+  margin-top: 30rpx;
+  font-size: 150rpx;
+  font-weight: 900;
+  line-height: 1;
+  text-shadow: 8rpx 8rpx 0 #111;
+}
+
+.hint {
+  margin-top: 18rpx;
+  font-size: 30rpx;
+  font-weight: 900;
+}
+
+.tap-zone {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin-top: 36rpx;
+  border: 8rpx solid #111;
+  border-radius: 8rpx;
+  background: #fff;
+  color: #111;
+  box-shadow: 10rpx 10rpx 0 #111;
+}
+
+.tap-main {
+  font-size: 72rpx;
+  font-weight: 900;
+}
+
+.tap-sub {
+  margin-top: 16rpx;
+  font-size: 30rpx;
+  font-weight: 800;
+}
+

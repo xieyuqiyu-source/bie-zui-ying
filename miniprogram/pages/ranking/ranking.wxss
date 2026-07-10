@@ -1,0 +1,62 @@
+.ranking {
+  display: flex;
+  flex-direction: column;
+  gap: 24rpx;
+}
+
+.small {
+  font-size: 58rpx;
+}
+
+.tabs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 14rpx;
+  min-width: 0;
+}
+
+.tabs .secondary-button {
+  min-height: 76rpx;
+  padding: 12rpx 8rpx;
+  font-size: 28rpx;
+}
+
+.tabs .active {
+  color: #fff;
+  background: #111;
+}
+
+.empty {
+  padding: 40rpx;
+  font-size: 34rpx;
+  font-weight: 900;
+}
+
+.rank-item {
+  display: flex;
+  align-items: center;
+  gap: 22rpx;
+  padding: 24rpx;
+}
+
+.rank {
+  width: 88rpx;
+  font-size: 36rpx;
+  font-weight: 900;
+}
+
+.info {
+  min-width: 0;
+}
+
+.name {
+  font-size: 32rpx;
+  font-weight: 900;
+  word-break: break-all;
+}
+
+.meta {
+  margin-top: 8rpx;
+  font-size: 24rpx;
+  font-weight: 800;
+}

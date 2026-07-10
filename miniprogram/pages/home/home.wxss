@@ -1,0 +1,48 @@
+.home {
+  display: flex;
+  flex-direction: column;
+  gap: 34rpx;
+}
+
+.status {
+  padding: 28rpx;
+}
+
+.nickname {
+  margin-top: 18rpx;
+  font-size: 42rpx;
+  font-weight: 900;
+}
+
+.stats {
+  margin-top: 10rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.taunt {
+  padding: 28rpx;
+  border-left: 10rpx solid #111;
+  background: rgba(255, 255, 255, 0.56);
+  font-size: 36rpx;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.start {
+  margin-top: 20rpx;
+}
+
+.actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 22rpx;
+  min-width: 0;
+}
+
+.actions .secondary-button {
+  min-height: 88rpx;
+  font-size: 30rpx;
+  padding-left: 12rpx;
+  padding-right: 12rpx;
+}

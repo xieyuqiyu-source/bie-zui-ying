@@ -1,0 +1,20 @@
+<view class="page result">
+  <view class="brand small">{{headline}}</view>
+  <view class="trash comic-panel">{{trashTalk}}</view>
+
+  <view class="score-card comic-panel">
+    <view class="line">
+      <text>{{ownerName}}</text>
+      <text>{{ownerScore}}</text>
+    </view>
+    <view class="line">
+      <text>{{guestName}}</text>
+      <text>{{guestScore}}</text>
+    </view>
+  </view>
+
+  <button class="primary-button" bindtap="goRanking">看看谁在装</button>
+  <button class="secondary-button" bindtap="goHome">再开一局</button>
+  <button class="secondary-button" bindtap="login">留名上榜</button>
+</view>
+

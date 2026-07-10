@@ -1,0 +1,12 @@
+<view class="battle" bindtap="tapBattle">
+  <view class="top">
+    <view class="time">{{phaseText}}</view>
+    <view class="score">{{score}}</view>
+    <view class="hint">{{hint}}</view>
+  </view>
+  <view class="tap-zone">
+    <view class="tap-main">{{tapText}}</view>
+    <view class="tap-sub">点这里，别解释</view>
+  </view>
+</view>
+

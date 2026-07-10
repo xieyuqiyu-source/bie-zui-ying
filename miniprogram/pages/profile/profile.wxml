@@ -1,0 +1,10 @@
+<view class="page">
+  <view class="brand small">我的战绩</view>
+  <view class="comic-panel profile">
+    <view class="title">{{user.title || '神秘手指'}}</view>
+    <view class="name">{{user.nickname || '匿名高手'}}</view>
+    <view class="stats">胜 {{user.wins || 0}} · 负 {{user.losses || 0}} · 平 {{user.draws || 0}}</view>
+    <view class="stats">最佳单局 {{user.bestScore || 0}}</view>
+  </view>
+</view>
+

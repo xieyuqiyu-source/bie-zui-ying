@@ -1,0 +1,25 @@
+<view class="page home">
+  <view class="brand">别嘴硬</view>
+  <view class="subtitle">10 秒钟，重新定义兄弟地位。</view>
+
+  <view class="status comic-panel">
+    <view class="tag">{{user.title || '神秘手指'}}</view>
+    <view class="nickname">{{user.nickname || '正在加载...'}}</view>
+    <view class="stats">胜 {{user.wins || 0}} · 负 {{user.losses || 0}} · 最佳 {{user.bestScore || 0}}</view>
+  </view>
+
+  <view class="taunt">{{taunt}}</view>
+
+  <button class="primary-button start" loading="{{creating}}" bindtap="createRoom">
+    发起一场嘴硬测试
+  </button>
+
+  <button class="secondary-button" loading="{{creatingBot}}" bindtap="createBotRoom">
+    先拿机器人热手
+  </button>
+
+  <view class="actions">
+    <button class="secondary-button" bindtap="goRanking">排行榜</button>
+    <button class="secondary-button" bindtap="login">留名上榜</button>
+  </view>
+</view>

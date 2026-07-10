@@ -1,0 +1,20 @@
+<view class="page ranking">
+  <view class="brand small">谁最能装</view>
+
+  <view class="tabs">
+    <button class="secondary-button {{type === 'wins' ? 'active' : ''}}" data-type="wins" bindtap="switchType">胜场</button>
+    <button class="secondary-button {{type === 'streak' ? 'active' : ''}}" data-type="streak" bindtap="switchType">连胜</button>
+    <button class="secondary-button {{type === 'bestScore' ? 'active' : ''}}" data-type="bestScore" bindtap="switchType">最佳</button>
+  </view>
+
+  <view wx:if="{{items.length === 0}}" class="empty comic-panel">排行榜还没人装起来。</view>
+
+  <view wx:for="{{items}}" wx:key="rank" class="rank-item comic-panel">
+    <view class="rank">#{{item.rank}}</view>
+    <view class="info">
+      <view class="name">{{item.user.nickname}}</view>
+      <view class="meta">{{item.user.title}} · 胜 {{item.user.wins}} · 最佳 {{item.user.bestScore}}</view>
+    </view>
+  </view>
+</view>
+

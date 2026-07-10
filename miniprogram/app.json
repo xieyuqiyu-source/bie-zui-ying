@@ -1,0 +1,19 @@
+{
+  "pages": [
+    "pages/home/home",
+    "pages/room/room",
+    "pages/battle/battle",
+    "pages/result/result",
+    "pages/ranking/ranking",
+    "pages/profile/profile"
+  ],
+  "window": {
+    "navigationBarTitleText": "别嘴硬",
+    "navigationBarBackgroundColor": "#111111",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#f7d84a"
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json"
+}
+

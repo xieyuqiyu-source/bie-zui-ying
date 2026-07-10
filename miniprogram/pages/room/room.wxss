@@ -1,0 +1,55 @@
+.room {
+  display: flex;
+  flex-direction: column;
+  gap: 30rpx;
+}
+
+.small {
+  font-size: 56rpx;
+}
+
+.players {
+  display: grid;
+  grid-template-columns: 1fr 96rpx 1fr;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.player {
+  min-height: 300rpx;
+  padding: 24rpx;
+  text-align: center;
+}
+
+.avatar {
+  width: 112rpx;
+  height: 112rpx;
+  margin: 0 auto 20rpx;
+  border: 6rpx solid #111;
+  border-radius: 50%;
+  background: #e33124;
+  color: #fff;
+  font-size: 52rpx;
+  font-weight: 900;
+  line-height: 112rpx;
+}
+
+.name {
+  min-height: 72rpx;
+  font-size: 30rpx;
+  font-weight: 900;
+  word-break: break-all;
+}
+
+.ready {
+  margin-top: 10rpx;
+  font-size: 24rpx;
+  font-weight: 800;
+}
+
+.versus {
+  font-size: 40rpx;
+  font-weight: 900;
+  text-align: center;
+}
+
