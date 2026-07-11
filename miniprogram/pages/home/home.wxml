@@ -31,7 +31,7 @@
         <view class="avatar-shell">
           <button class="avatar-picker" open-type="chooseAvatar" bindchooseavatar="chooseAvatar">
             <image wx:if="{{fameAvatarTemp || user.avatarUrl}}" class="avatar-preview" src="{{fameAvatarTemp || user.avatarUrl}}" mode="aspectFill"></image>
-            <view wx:else class="avatar-face face-{{fameDefaultAvatar.theme}}">{{fameDefaultAvatar.text}}</view>
+            <view wx:else class="avatar-face">图</view>
           </button>
         </view>
         <input class="fame-input" type="nickname" maxlength="32" value="{{fameNickname}}" placeholder="输入你的响亮名号" bindinput="inputFameNickname" />

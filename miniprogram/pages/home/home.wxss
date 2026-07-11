@@ -134,33 +134,9 @@
   align-items: center;
   justify-content: center;
   color: #111;
+  background: #f7d84a;
   font-size: 54rpx;
   font-weight: 900;
-}
-
-.face-red {
-  background: #e33124;
-  color: #fff;
-}
-
-.face-yellow {
-  background: #f7d84a;
-}
-
-.face-blue {
-  background: #54a3ff;
-}
-
-.face-green {
-  background: #55d17a;
-}
-
-.face-pink {
-  background: #ff8fb1;
-}
-
-.face-gray {
-  background: #e7e7e7;
 }
 
 .fame-input {
