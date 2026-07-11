@@ -13,6 +13,7 @@ Page({
     guestInitial: "?",
     ownerOnline: false,
     guestOnline: false,
+    onlineUserIds: [],
     socketReady: false
   },
 
@@ -46,12 +47,14 @@ Page({
   },
 
   updateRoom(room, onlineUserIds) {
-    const onlineSet = new Set(onlineUserIds || []);
+    const nextOnlineUserIds = Array.isArray(onlineUserIds) ? onlineUserIds : this.data.onlineUserIds;
+    const onlineSet = new Set(nextOnlineUserIds || []);
     this.setData({
       room,
       statusText: room.guest ? "双方就位，嘴硬冷却中" : "对方还在路上，可能正在热身",
       ownerInitial: (room.ownerUser && room.ownerUser.nickname || "?").slice(0, 1),
       guestInitial: (room.guestUser && room.guestUser.nickname || "?").slice(0, 1),
+      onlineUserIds: nextOnlineUserIds,
       ownerOnline: room.owner ? onlineSet.has(room.owner.userId) : false,
       guestOnline: room.guest ? onlineSet.has(room.guest.userId) : false
     });
@@ -104,7 +107,7 @@ Page({
     if (!this.data.roomId) return;
     try {
       const result = await api.getRoom(this.data.roomId);
-      this.updateRoom(result.room, []);
+      this.updateRoom(result.room);
     } catch (error) {
       if (!options.silent) {
         wx.showToast({ title: "房间迷路了", icon: "none" });
@@ -118,7 +121,7 @@ Page({
     try {
       const user = await ensureUser();
       const result = await api.ready(this.data.roomId, user.id);
-      this.updateRoom(result.room, []);
+      this.updateRoom(result.room);
       if (result.room.status === "countdown") {
         wx.redirectTo({
           url: `/pages/battle/battle?roomId=${result.room.id}`
