@@ -1,4 +1,5 @@
 const api = require("../../utils/api");
+const { APP_VERSION } = require("../../utils/config");
 const { ensureUser, saveUser } = require("../../utils/user");
 
 const taunts = [
@@ -10,6 +11,7 @@ const taunts = [
 
 Page({
   data: {
+    appVersion: APP_VERSION,
     user: {},
     taunt: taunts[0],
     creating: false,

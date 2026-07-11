@@ -1,4 +1,5 @@
 <view class="page home">
+  <view class="version-badge">v{{appVersion}}</view>
   <view class="brand">别嘴硬</view>
   <view class="subtitle">10 秒钟，重新定义兄弟地位。</view>
 

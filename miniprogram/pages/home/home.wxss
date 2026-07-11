@@ -1,7 +1,28 @@
 .home {
+  position: relative;
   display: flex;
   flex-direction: column;
   gap: 34rpx;
+  padding-top: 58rpx;
+}
+
+.version-badge {
+  position: absolute;
+  top: 22rpx;
+  right: 28rpx;
+  max-width: 180rpx;
+  padding: 6rpx 14rpx;
+  border: 4rpx solid #111;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+  background: #fff;
+  font-size: 22rpx;
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .status {
