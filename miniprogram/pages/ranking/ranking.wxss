@@ -42,6 +42,12 @@
   padding: 24rpx;
 }
 
+.rank-item.is-me {
+  border-color: #e33124;
+  background: #f7d84a;
+  box-shadow: 10rpx 10rpx 0 #e33124;
+}
+
 .rank-left {
   display: flex;
   align-items: center;
@@ -81,6 +87,24 @@
   font-size: 32rpx;
   font-weight: 900;
   word-break: break-all;
+}
+
+.me-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 34rpx;
+  height: 34rpx;
+  margin-left: 10rpx;
+  padding: 0 8rpx;
+  border: 4rpx solid #111;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+  background: #e33124;
+  color: #fff;
+  font-size: 20rpx;
+  font-weight: 900;
+  vertical-align: middle;
 }
 
 .meta {

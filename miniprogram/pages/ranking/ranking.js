@@ -1,8 +1,10 @@
 const api = require("../../utils/api");
+const { ensureUser } = require("../../utils/user");
 
 Page({
   data: {
     type: "bestScore",
+    user: {},
     items: []
   },
 
@@ -11,8 +13,13 @@ Page({
   },
 
   async load() {
+    const user = await ensureUser({ refresh: true });
     const result = await api.rankings(this.data.type);
-    this.setData({ items: result.items });
+    const items = (result.items || []).map((item) => ({
+      ...item,
+      isMe: item.user && item.user.id === user.id
+    }));
+    this.setData({ user, items });
   },
 
   switchType(event) {
