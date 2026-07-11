@@ -311,39 +311,37 @@ export const roomService = {
     room.status = "finished";
     room.endedAt = nowIso();
 
-    for (const user of [owner, guest]) {
-      if (user.kind !== "bot") {
+    const rankedMatch = owner.kind !== "bot" && guest.kind !== "bot";
+
+    if (rankedMatch) {
+      for (const user of [owner, guest]) {
         user.totalMatches += 1;
         user.bestScore = Math.max(user.bestScore, user.id === owner.id ? room.owner.score : room.guest.score);
       }
-    }
 
-    if (!winnerId) {
-      if (owner.kind !== "bot") owner.draws += 1;
-      if (guest.kind !== "bot") guest.draws += 1;
-      owner.currentStreak = 0;
-      guest.currentStreak = 0;
-    } else {
-      const winner = winnerId === owner.id ? owner : guest;
-      const loser = winnerId === owner.id ? guest : owner;
-      if (winner.kind !== "bot") {
+      if (!winnerId) {
+        owner.draws += 1;
+        guest.draws += 1;
+        owner.currentStreak = 0;
+        guest.currentStreak = 0;
+      } else {
+        const winner = winnerId === owner.id ? owner : guest;
+        const loser = winnerId === owner.id ? guest : owner;
         winner.wins += 1;
         winner.currentStreak += 1;
         winner.bestStreak = Math.max(winner.bestStreak, winner.currentStreak);
-      }
-      if (loser.kind !== "bot") {
         loser.losses += 1;
         loser.currentStreak = 0;
       }
-    }
 
-    touchUser(owner);
-    touchUser(guest);
+      touchUser(owner);
+      touchUser(guest);
+    }
 
     await insertMatch(match);
     await Promise.all([
-      owner.kind !== "bot" ? userService.saveUserStats(owner) : undefined,
-      guest.kind !== "bot" ? userService.saveUserStats(guest) : undefined,
+      rankedMatch ? userService.saveUserStats(owner) : undefined,
+      rankedMatch ? userService.saveUserStats(guest) : undefined,
       saveRoom(room)
     ]);
 
