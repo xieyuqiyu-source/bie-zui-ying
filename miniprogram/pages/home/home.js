@@ -1,4 +1,5 @@
 const api = require("../../utils/api");
+const { pickDefaultAvatar } = require("../../utils/defaultAvatars");
 const { ensureUser, saveUser } = require("../../utils/user");
 
 const taunts = [
@@ -17,6 +18,7 @@ Page({
     fameModalVisible: false,
     fameNickname: "",
     fameAvatarTemp: "",
+    fameDefaultAvatar: pickDefaultAvatar(),
     savingProfile: false
   },
 
@@ -71,7 +73,8 @@ Page({
     this.setData({
       fameModalVisible: true,
       fameNickname: user.profileAuthorized ? user.nickname : "",
-      fameAvatarTemp: ""
+      fameAvatarTemp: "",
+      fameDefaultAvatar: pickDefaultAvatar()
     });
   },
 
