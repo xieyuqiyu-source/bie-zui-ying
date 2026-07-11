@@ -4,12 +4,20 @@
 
   <view class="players">
     <view class="player comic-panel">
+      <view class="online-row">
+        <view class="online-dot {{ownerOnline ? 'on' : ''}}"></view>
+        <text>{{ownerOnline ? '在线' : '连接中'}}</text>
+      </view>
       <view class="avatar">{{ownerInitial}}</view>
       <view class="name">{{room.ownerUser.nickname || '房主'}}</view>
       <view class="ready">{{room.owner.ready ? '已准备' : '等他按下按钮'}}</view>
     </view>
     <view class="versus">VS</view>
     <view class="player comic-panel">
+      <view class="online-row">
+        <view class="online-dot {{guestOnline ? 'on' : ''}}"></view>
+        <text>{{guestOnline ? '在线' : '等兄弟'}}</text>
+      </view>
       <view class="avatar">{{guestInitial}}</view>
       <view class="name">{{room.guestUser.nickname || '等待兄弟'}}</view>
       <view class="ready">{{room.guest && room.guest.ready ? '已准备' : '嘴硬加载中'}}</view>
@@ -24,4 +32,3 @@
     叫兄弟进来
   </button>
 </view>
-

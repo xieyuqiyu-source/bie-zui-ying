@@ -21,6 +21,34 @@
   text-align: center;
 }
 
+.online-row {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8rpx;
+  min-height: 34rpx;
+  margin-bottom: 14rpx;
+  padding: 4rpx 12rpx;
+  border: 4rpx solid #111;
+  border-radius: 999rpx;
+  background: #fff;
+  font-size: 20rpx;
+  font-weight: 900;
+}
+
+.online-dot {
+  width: 16rpx;
+  height: 16rpx;
+  border: 3rpx solid #111;
+  border-radius: 50%;
+  background: #bbb;
+}
+
+.online-dot.on {
+  background: #35d35b;
+  box-shadow: 0 0 0 4rpx rgba(53, 211, 91, 0.25);
+}
+
 .avatar {
   width: 112rpx;
   height: 112rpx;
@@ -52,4 +80,3 @@
   font-weight: 900;
   text-align: center;
 }
-

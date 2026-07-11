@@ -1,6 +1,7 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { roomService } from "../services/roomService.js";
+import { roomSocketService } from "../services/roomSocketService.js";
 import { userService } from "../services/userService.js";
 
 const userBodySchema = z.object({
@@ -17,6 +18,7 @@ export async function roomRoutes(app: FastifyInstance) {
     const body = userBodySchema.parse(request.body ?? {});
     const user = await userService.ensureUser(body.userId);
     const room = await roomService.createRoom(user);
+    await roomSocketService.broadcast(room.id);
     return { user, room };
   });
 
@@ -25,6 +27,7 @@ export async function roomRoutes(app: FastifyInstance) {
     const user = await userService.ensureUser(body.userId);
     const bot = await userService.createBotUser();
     const room = await roomService.createBotRoom(user, bot);
+    await roomSocketService.broadcast(room.id);
     return { user, room };
   });
 
@@ -40,6 +43,7 @@ export async function roomRoutes(app: FastifyInstance) {
     const body = userBodySchema.parse(request.body ?? {});
     const user = await userService.ensureUser(body.userId);
     const room = await roomService.joinRoom(params.roomId, user);
+    await roomSocketService.broadcast(params.roomId);
     return { user, room };
   });
 
@@ -47,12 +51,15 @@ export async function roomRoutes(app: FastifyInstance) {
     const params = z.object({ roomId: z.string() }).parse(request.params);
     const body = z.object({ userId: z.string() }).parse(request.body);
     const room = await roomService.setReady(params.roomId, body.userId);
+    await roomSocketService.broadcast(params.roomId);
     return { room };
   });
 
   app.post("/api/rooms/:roomId/score", async (request) => {
     const params = z.object({ roomId: z.string() }).parse(request.params);
     const body = scoreBodySchema.parse(request.body);
-    return roomService.submitScore(params.roomId, body.userId, body.score);
+    const result = await roomService.submitScore(params.roomId, body.userId, body.score);
+    await roomSocketService.broadcast(params.roomId);
+    return result;
   });
 }

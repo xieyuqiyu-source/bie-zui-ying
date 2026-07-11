@@ -14,6 +14,7 @@ import { healthRoutes } from "./routes/healthRoutes.js";
 import { rankingRoutes } from "./routes/rankingRoutes.js";
 import { roomRoutes } from "./routes/roomRoutes.js";
 import { uploadRoutes } from "./routes/uploadRoutes.js";
+import { roomSocketService } from "./services/roomSocketService.js";
 
 const app = Fastify({
   logger: true
@@ -41,9 +42,16 @@ await app.register(uploadRoutes);
 await app.register(roomRoutes);
 await app.register(rankingRoutes);
 
-app.get("/ws/rooms/:roomId", { websocket: true }, (connection, request) => {
+app.get("/ws/rooms/:roomId", { websocket: true }, async (socket, request) => {
   const { roomId } = request.params as { roomId: string };
-  connection.socket.send(JSON.stringify({ type: "connected", roomId }));
+  const { userId } = request.query as { userId?: string };
+  if (!userId) {
+    socket.close(1008, "userId required");
+    return;
+  }
+  roomSocketService.join(roomId, userId, socket);
+  roomSocketService.sendConnected(roomId, socket);
+  await roomSocketService.broadcast(roomId);
 });
 
 try {
