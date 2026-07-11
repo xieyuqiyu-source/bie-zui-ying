@@ -41,6 +41,25 @@ export const roomSocketService = {
     socket.on("message", (raw: { toString(): string }) => {
       try {
         const message = JSON.parse(raw.toString()) as { type?: string; score?: number };
+
+        if (message.type === "rematch:invite") {
+          broadcastRaw(roomId, {
+            type: "rematch:invite",
+            fromUserId: userId,
+            sentAt: Date.now()
+          });
+          return;
+        }
+
+        if (message.type === "rematch:decline") {
+          broadcastRaw(roomId, {
+            type: "rematch:decline",
+            fromUserId: userId,
+            sentAt: Date.now()
+          });
+          return;
+        }
+
         if (message.type !== "battle:score") return;
 
         const score = Math.max(0, Math.min(Math.floor(Number(message.score) || 0), 180));
@@ -88,6 +107,14 @@ export const roomSocketService = {
       type: "room:connected",
       roomId,
       onlineUserIds: onlineUserIds(roomId)
+    });
+  },
+
+  broadcastRematchStart(roomId: string, newRoom: unknown) {
+    broadcastRaw(roomId, {
+      type: "rematch:start",
+      room: newRoom,
+      sentAt: Date.now()
     });
   }
 };

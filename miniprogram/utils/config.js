@@ -1,6 +1,6 @@
 const API_BASE_URL = "https://aitools.ccoos.cn/bie-zui-ying-api";
 const WS_BASE_URL = "wss://aitools.ccoos.cn/bie-zui-ying-api";
-const APP_VERSION = "0.0.2";
+const APP_VERSION = "0.0.3";
 
 module.exports = {
   API_BASE_URL,

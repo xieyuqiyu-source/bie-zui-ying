@@ -33,6 +33,48 @@
   border-bottom: 0;
 }
 
+.presence {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  padding: 24rpx;
+}
+
+.presence-dot {
+  flex: 0 0 30rpx;
+  width: 30rpx;
+  height: 30rpx;
+  border: 5rpx solid #111;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: #999;
+}
+
+.presence-dot.is-online {
+  background: #29d35b;
+}
+
+.presence-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.presence-title {
+  font-size: 32rpx;
+  font-weight: 900;
+  line-height: 1.2;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+.presence-sub {
+  margin-top: 8rpx;
+  color: #555;
+  font-size: 24rpx;
+  font-weight: 800;
+  line-height: 1.3;
+}
+
 .fame-mask {
   position: fixed;
   z-index: 20;

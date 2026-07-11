@@ -170,6 +170,38 @@ export const roomService = {
     return serializeRoom(room);
   },
 
+  async createRematchRoom(roomId: string, userId: string) {
+    const oldRoom = await loadRoom(roomId);
+    if (!oldRoom) throw new Error("ROOM_NOT_FOUND");
+    if (oldRoom.status !== "finished") throw new Error("REMATCH_NEEDS_FINISHED_ROOM");
+    if (!oldRoom.guest) throw new Error("REMATCH_NEEDS_TWO_PLAYERS");
+    if (![oldRoom.owner.userId, oldRoom.guest.userId].includes(userId)) throw new Error("PLAYER_NOT_IN_ROOM");
+
+    const owner = await userService.getUser(oldRoom.owner.userId);
+    const guest = await userService.getUser(oldRoom.guest.userId);
+    if (!owner || !guest) throw new Error("PLAYER_NOT_FOUND");
+    if (owner.kind === "bot" || guest.kind === "bot") throw new Error("REMATCH_NEEDS_REAL_PLAYERS");
+
+    const playStartAt = new Date(Date.now() + 3000).toISOString();
+    const playEndsAt = new Date(Date.now() + 3000 + MATCH_SECONDS * 1000).toISOString();
+    const room: Room = {
+      id: nanoid(16),
+      code: nanoid(8),
+      status: "countdown",
+      owner: { userId: oldRoom.owner.userId, ready: true },
+      guest: { userId: oldRoom.guest.userId, ready: true },
+      matchId: nanoid(16),
+      countdownStartAt: nowIso(),
+      playStartAt,
+      playEndsAt,
+      createdAt: nowIso(),
+      expiresAt: addMinutesIso(10)
+    };
+
+    await saveRoom(room);
+    return serializeRoom(room);
+  },
+
   async getRoom(roomId: string) {
     const room = await loadRoom(roomId);
     return room ? serializeRoom(room) : undefined;

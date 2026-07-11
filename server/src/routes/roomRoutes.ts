@@ -63,4 +63,12 @@ export async function roomRoutes(app: FastifyInstance) {
     await roomSocketService.broadcast(params.roomId);
     return { ...result, onlineUserIds: roomSocketService.onlineUserIds(params.roomId) };
   });
+
+  app.post("/api/rooms/:roomId/rematch", async (request) => {
+    const params = z.object({ roomId: z.string() }).parse(request.params);
+    const body = z.object({ userId: z.string() }).parse(request.body);
+    const room = await roomService.createRematchRoom(params.roomId, body.userId);
+    roomSocketService.broadcastRematchStart(params.roomId, room);
+    return { room };
+  });
 }

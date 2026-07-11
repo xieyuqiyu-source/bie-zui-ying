@@ -128,6 +128,13 @@ module.exports = {
     });
   },
 
+  createRematch(roomId, userId) {
+    return request(`/api/rooms/${roomId}/rematch`, {
+      method: "POST",
+      data: { userId }
+    });
+  },
+
   rankings(type = "wins") {
     return request(`/api/rankings?type=${type}`);
   }

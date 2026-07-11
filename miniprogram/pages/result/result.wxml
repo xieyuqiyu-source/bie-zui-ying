@@ -13,8 +13,19 @@
     </view>
   </view>
 
+  <view class="presence comic-panel">
+    <view class="presence-dot {{opponentOnline ? 'is-online' : ''}}"></view>
+    <view class="presence-copy">
+      <view class="presence-title">{{presenceText}}</view>
+      <view class="presence-sub">{{opponentOnline ? '现在可以直接邀他再打一局' : '他走了，这局嘴硬先记账'}}</view>
+    </view>
+  </view>
+
+  <button class="primary-button" loading="{{rematchLoading}}" disabled="{{!opponentOnline || waitingResult}}" bindtap="requestRematch">
+    {{rematchButtonText}}
+  </button>
   <button class="primary-button" bindtap="goRanking">看看谁在装</button>
-  <button class="secondary-button" bindtap="goHome">再开一局</button>
+  <button class="secondary-button" bindtap="goHome">回首页开新局</button>
   <button class="secondary-button" bindtap="openFameModal">{{user.profileAuthorized ? '更新威名' : '留下赫赫威名'}}</button>
 
   <view wx:if="{{fameModalVisible}}" class="fame-mask">
