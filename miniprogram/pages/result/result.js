@@ -10,35 +10,81 @@ Page({
     ownerScore: 0,
     guestScore: 0,
     user: {},
+    roomId: "",
+    waitingResult: false,
     fameModalVisible: false,
     fameNickname: "",
     fameAvatarTemp: "",
     savingProfile: false
   },
 
-  async onLoad() {
+  async onLoad(query) {
     const user = await ensureUser({ refresh: true });
-    this.setData({ user });
+    this.setData({ user, roomId: query.roomId || "" });
     const app = getApp();
     const result = app.globalData.lastResult;
-    if (!result || !result.match) {
+    if (!this.renderResult(result)) {
       this.setData({
         headline: "等对方交卷",
-        trashTalk: "战报正在路上，嘴硬先别急。"
+        trashTalk: "战报正在路上，嘴硬先别急。",
+        waitingResult: true
       });
-      return;
+      this.startResultPolling();
     }
+  },
+
+  onUnload() {
+    this.stopResultPolling();
+  },
+
+  renderResult(result) {
+    if (!result || !result.room) return false;
 
     const room = result.room;
+    this.setData({
+      ownerName: room.ownerUser && room.ownerUser.nickname || "房主",
+      guestName: room.guestUser && room.guestUser.nickname || "兄弟",
+      ownerScore: room.owner && room.owner.score !== undefined ? room.owner.score : 0,
+      guestScore: room.guest && room.guest.score !== undefined ? room.guest.score : 0
+    });
+
+    if (!result.match) return false;
+
     const match = result.match;
     this.setData({
       headline: match.resultType === "draw" ? "平局，加赛" : "胜负已分",
       trashTalk: match.trashTalk,
-      ownerName: room.ownerUser.nickname,
-      guestName: room.guestUser.nickname,
       ownerScore: match.playerAScore,
-      guestScore: match.playerBScore
+      guestScore: match.playerBScore,
+      waitingResult: false
     });
+    this.stopResultPolling();
+    const app = getApp();
+    app.globalData.lastResult = result;
+    return true;
+  },
+
+  startResultPolling() {
+    if (this.resultPoller || !this.data.roomId) return;
+    this.resultPoller = setInterval(() => this.refreshResult(), 1000);
+    this.refreshResult();
+  },
+
+  stopResultPolling() {
+    if (this.resultPoller) {
+      clearInterval(this.resultPoller);
+      this.resultPoller = null;
+    }
+  },
+
+  async refreshResult() {
+    if (!this.data.roomId) return;
+    try {
+      const result = await api.getRoom(this.data.roomId);
+      this.renderResult(result);
+    } catch (error) {
+      // Keep waiting; transient network hiccups should not trap the result page.
+    }
   },
 
   onShareAppMessage() {

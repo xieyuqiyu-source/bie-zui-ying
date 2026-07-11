@@ -35,7 +35,8 @@ export async function roomRoutes(app: FastifyInstance) {
     const params = z.object({ roomId: z.string() }).parse(request.params);
     const room = await roomService.getRoom(params.roomId);
     if (!room) return reply.code(404).send({ error: "ROOM_NOT_FOUND" });
-    return { room, onlineUserIds: roomSocketService.onlineUserIds(params.roomId) };
+    const match = room.status === "finished" ? await roomService.getMatch(params.roomId) : undefined;
+    return { room, match, onlineUserIds: roomSocketService.onlineUserIds(params.roomId) };
   });
 
   app.post("/api/rooms/:roomId/join", async (request) => {

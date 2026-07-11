@@ -1,4 +1,5 @@
 import { nanoid } from "nanoid";
+import type { RowDataPacket } from "mysql2";
 import { db } from "../data/mysql.js";
 import { redis } from "../data/redis.js";
 import type { Match, Room, User } from "../types/domain.js";
@@ -10,6 +11,21 @@ import { userService } from "./userService.js";
 const MATCH_SECONDS = 10;
 const MAX_REASONABLE_SCORE = 180;
 const ROOM_TTL_SECONDS = 60 * 15;
+const roomLocks = new Map<string, Promise<void>>();
+
+interface MatchRow extends RowDataPacket {
+  id: string;
+  room_id: string;
+  player_a_id: string;
+  player_b_id: string;
+  player_a_score: number;
+  player_b_score: number;
+  winner_id?: string | null;
+  result_type: "win" | "draw";
+  duration_seconds: number;
+  trash_talk: string;
+  created_at: Date;
+}
 
 function roomKey(roomId: string) {
   return `bie-zui-ying:room:${roomId}`;
@@ -27,6 +43,42 @@ function publicUser(user: User) {
     losses: user.losses,
     bestScore: user.bestScore
   };
+}
+
+function rowToMatch(row: MatchRow): Match {
+  return {
+    id: row.id,
+    roomId: row.room_id,
+    playerAId: row.player_a_id,
+    playerBId: row.player_b_id,
+    playerAScore: row.player_a_score,
+    playerBScore: row.player_b_score,
+    winnerId: row.winner_id || undefined,
+    resultType: row.result_type,
+    durationSeconds: row.duration_seconds,
+    trashTalk: row.trash_talk,
+    createdAt: row.created_at.toISOString()
+  };
+}
+
+async function withRoomLock<T>(roomId: string, task: () => Promise<T>) {
+  const previous = roomLocks.get(roomId) || Promise.resolve();
+  let release!: () => void;
+  const current = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  const next = previous.then(() => current);
+  roomLocks.set(roomId, next);
+
+  await previous;
+  try {
+    return await task();
+  } finally {
+    release();
+    if (roomLocks.get(roomId) === next) {
+      roomLocks.delete(roomId);
+    }
+  }
 }
 
 async function saveRoom(room: Room) {
@@ -79,6 +131,11 @@ async function insertMatch(match: Match) {
   );
 }
 
+async function findMatchByRoom(roomId: string) {
+  const [rows] = await db.execute<MatchRow[]>("SELECT * FROM matches WHERE room_id = :roomId LIMIT 1", { roomId });
+  return rows[0] ? rowToMatch(rows[0]) : undefined;
+}
+
 export const roomService = {
   async createRoom(owner: User) {
     const room: Room = {
@@ -118,6 +175,10 @@ export const roomService = {
     return room ? serializeRoom(room) : undefined;
   },
 
+  async getMatch(roomId: string) {
+    return findMatchByRoom(roomId);
+  },
+
   async joinRoom(roomId: string, guest: User) {
     const room = await loadRoom(roomId);
     if (!room) throw new Error("ROOM_NOT_FOUND");
@@ -155,10 +216,15 @@ export const roomService = {
   },
 
   async submitScore(roomId: string, userId: string, score: number) {
+    return withRoomLock(roomId, async () => {
     const room = await loadRoom(roomId);
     if (!room) throw new Error("ROOM_NOT_FOUND");
     if (!room.guest || !room.matchId) throw new Error("MATCH_NOT_READY");
     if (![room.owner.userId, room.guest.userId].includes(userId)) throw new Error("PLAYER_NOT_IN_ROOM");
+
+    if (room.status === "finished") {
+      return { room: await serializeRoom(room), match: await findMatchByRoom(room.id) };
+    }
 
     const normalizedScore = Math.max(0, Math.min(Math.floor(score), MAX_REASONABLE_SCORE));
 
@@ -250,6 +316,7 @@ export const roomService = {
     ]);
 
     return { room: await serializeRoom(room), match };
+    });
   },
 
   async rankings(type: "wins" | "streak" | "bestScore" = "wins") {
