@@ -22,10 +22,12 @@
       <view class="fame-title">这局有点东西，要不要带名上榜？</view>
       <view class="fame-copy">授权后会出现在排行榜。不授权也能继续嘴硬。</view>
       <view class="fame-profile-row">
-        <button class="avatar-picker" open-type="chooseAvatar" bindchooseavatar="chooseAvatar">
-          <image wx:if="{{fameAvatarTemp || user.avatarUrl}}" class="avatar-preview" src="{{fameAvatarTemp || user.avatarUrl}}" mode="aspectFill"></image>
-          <view wx:else class="avatar-face face-{{fameDefaultAvatar.theme}}">{{fameDefaultAvatar.text}}</view>
-        </button>
+        <view class="avatar-shell">
+          <button class="avatar-picker" open-type="chooseAvatar" bindchooseavatar="chooseAvatar">
+            <image wx:if="{{fameAvatarTemp || user.avatarUrl}}" class="avatar-preview" src="{{fameAvatarTemp || user.avatarUrl}}" mode="aspectFill"></image>
+            <view wx:else class="avatar-face face-{{fameDefaultAvatar.theme}}">{{fameDefaultAvatar.text}}</view>
+          </button>
+        </view>
         <input class="fame-input" type="nickname" maxlength="32" value="{{fameNickname}}" placeholder="输入你的响亮名号" bindinput="inputFameNickname" />
       </view>
       <button class="primary-button" loading="{{savingProfile}}" bindtap="saveProfile">留下赫赫威名</button>
