@@ -238,7 +238,7 @@ export const userService = {
   async rankings(type: "wins" | "streak" | "bestScore" = "wins") {
     const orderBy = type === "streak" ? "current_streak" : type === "bestScore" ? "best_score" : "wins";
     const [rows] = await db.query<UserRow[]>(
-      `SELECT * FROM users WHERE kind <> 'bot' ORDER BY ${orderBy} DESC, updated_at ASC LIMIT 50`
+      `SELECT * FROM users WHERE kind <> 'bot' AND total_matches > 0 ORDER BY ${orderBy} DESC, updated_at ASC LIMIT 50`
     );
     return rows.map(rowToUser);
   }

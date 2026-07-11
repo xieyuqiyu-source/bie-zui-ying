@@ -1,6 +1,19 @@
 const api = require("./api");
 
+let ensureUserTask = null;
+
 async function ensureUser(options = {}) {
+  if (ensureUserTask) return ensureUserTask;
+
+  ensureUserTask = doEnsureUser(options);
+  try {
+    return await ensureUserTask;
+  } finally {
+    ensureUserTask = null;
+  }
+}
+
+async function doEnsureUser(options = {}) {
   const app = getApp();
   if (app.globalData.user && !options.refresh) return app.globalData.user;
 
