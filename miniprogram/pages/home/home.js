@@ -21,7 +21,7 @@ Page({
   },
 
   async onShow() {
-    const user = await ensureUser();
+    const user = await ensureUser({ refresh: true });
     this.setData({
       user,
       taunt: taunts[Math.floor(Math.random() * taunts.length)]

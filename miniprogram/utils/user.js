@@ -1,11 +1,12 @@
 const api = require("./api");
 
-async function ensureUser() {
+async function ensureUser(options = {}) {
   const app = getApp();
-  if (app.globalData.user) return app.globalData.user;
+  if (app.globalData.user && !options.refresh) return app.globalData.user;
 
   const stored = wx.getStorageSync("user");
-  const result = await api.anonymous(stored && stored.id);
+  const userId = app.globalData.user && app.globalData.user.id || stored && stored.id;
+  const result = await api.anonymous(userId);
   app.globalData.user = result.user;
   wx.setStorageSync("user", result.user);
   return result.user;
@@ -21,4 +22,3 @@ module.exports = {
   ensureUser,
   saveUser
 };
-

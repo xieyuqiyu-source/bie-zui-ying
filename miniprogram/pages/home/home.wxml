@@ -20,13 +20,13 @@
 
   <view class="actions">
     <button class="secondary-button" bindtap="goRanking">排行榜</button>
-    <button class="secondary-button" bindtap="openFameModal">留名上榜</button>
+    <button class="secondary-button" bindtap="openFameModal">{{user.profileAuthorized ? '更新威名' : '留名上榜'}}</button>
   </view>
 
   <view wx:if="{{fameModalVisible}}" class="fame-mask">
     <view class="fame-panel comic-panel">
-      <view class="fame-title">是否留下你的赫赫威名？</view>
-      <view class="fame-copy">授权后会出现在排行榜。不授权也能玩，只是系统会继续叫你神秘手指。</view>
+      <view class="fame-title">{{user.profileAuthorized ? '更新你的赫赫威名' : '是否留下你的赫赫威名？'}}</view>
+      <view class="fame-copy">{{user.profileAuthorized ? '你已经留名了，之后战绩会继续累计到这个身份。' : '授权后会出现在排行榜。不授权也能玩，只是系统会继续叫你神秘手指。'}}</view>
       <view class="fame-profile-row">
         <view class="avatar-shell">
           <button class="avatar-picker" open-type="chooseAvatar" bindchooseavatar="chooseAvatar">
@@ -36,7 +36,7 @@
         </view>
         <input class="fame-input" type="nickname" maxlength="32" value="{{fameNickname}}" placeholder="输入你的响亮名号" bindinput="inputFameNickname" />
       </view>
-      <button class="primary-button" loading="{{savingProfile}}" bindtap="saveProfile">留下赫赫威名</button>
+      <button class="primary-button" loading="{{savingProfile}}" bindtap="saveProfile">{{user.profileAuthorized ? '更新赫赫威名' : '留下赫赫威名'}}</button>
       <button class="secondary-button" bindtap="closeFameModal">匿名也很帅</button>
     </view>
   </view>

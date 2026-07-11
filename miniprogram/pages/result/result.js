@@ -17,7 +17,7 @@ Page({
   },
 
   async onLoad() {
-    const user = await ensureUser();
+    const user = await ensureUser({ refresh: true });
     this.setData({ user });
     const app = getApp();
     const result = app.globalData.lastResult;

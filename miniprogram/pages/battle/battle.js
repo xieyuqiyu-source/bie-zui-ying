@@ -1,5 +1,5 @@
 const api = require("../../utils/api");
-const { ensureUser } = require("../../utils/user");
+const { ensureUser, saveUser } = require("../../utils/user");
 
 Page({
   data: {
@@ -72,6 +72,12 @@ Page({
 
     const user = await ensureUser();
     const result = await api.submitScore(this.data.roomId, user.id, this.data.score);
+    try {
+      const refreshed = await ensureUser({ refresh: true });
+      saveUser(refreshed);
+    } catch (error) {
+      // Ranking has already been updated on the server; local stats can refresh next launch.
+    }
     const app = getApp();
     app.globalData.lastResult = result;
 
@@ -80,4 +86,3 @@ Page({
     });
   }
 });
-
