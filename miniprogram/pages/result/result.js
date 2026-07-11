@@ -61,7 +61,21 @@ Page({
     this.stopResultPolling();
     const app = getApp();
     app.globalData.lastResult = result;
+    this.maybeOpenFameModal();
     return true;
+  },
+
+  maybeOpenFameModal() {
+    if (this.autoFamePromptShown) return;
+    const user = this.data.user || {};
+    if (user.profileAuthorized) return;
+
+    this.autoFamePromptShown = true;
+    this.setData({
+      fameModalVisible: true,
+      fameNickname: "",
+      fameAvatarTemp: ""
+    });
   },
 
   startResultPolling() {
