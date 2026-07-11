@@ -10,12 +10,18 @@
   <view wx:if="{{items.length === 0}}" class="empty comic-panel">排行榜还没人装起来。</view>
 
   <view wx:for="{{items}}" wx:key="rank" class="rank-item comic-panel">
-    <view class="rank">#{{item.rank}}</view>
-    <image wx:if="{{item.user.profileAuthorized && item.user.avatarUrl}}" class="rank-avatar" src="{{item.user.avatarUrl}}" mode="aspectFill"></image>
-    <view wx:else class="rank-avatar fallback">{{item.user.initial || '名'}}</view>
-    <view class="info">
-      <view class="name">{{item.user.nickname}}</view>
-      <view class="meta">{{item.user.title}} · 胜 {{item.user.wins}} · 最佳 {{item.user.bestScore}}</view>
+    <view class="rank-left">
+      <view class="rank">#{{item.rank}}</view>
+      <image wx:if="{{item.user.profileAuthorized && item.user.avatarUrl}}" class="rank-avatar" src="{{item.user.avatarUrl}}" mode="aspectFill"></image>
+      <view wx:else class="rank-avatar fallback">{{item.user.initial || '名'}}</view>
+      <view class="info">
+        <view class="name">{{item.user.nickname}}</view>
+        <view class="meta">{{item.user.title}} · 胜 {{item.user.wins}}</view>
+      </view>
+    </view>
+    <view class="best-score">
+      <view class="best-number">{{item.user.bestScore}}</view>
+      <view class="best-label">最佳点击</view>
     </view>
   </view>
 </view>

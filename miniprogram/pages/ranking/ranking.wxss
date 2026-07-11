@@ -37,12 +37,20 @@
 .rank-item {
   display: flex;
   align-items: center;
-  gap: 22rpx;
+  justify-content: space-between;
+  gap: 18rpx;
   padding: 24rpx;
 }
 
+.rank-left {
+  display: flex;
+  align-items: center;
+  gap: 18rpx;
+  min-width: 0;
+}
+
 .rank {
-  width: 88rpx;
+  flex: 0 0 76rpx;
   font-size: 36rpx;
   font-weight: 900;
 }
@@ -65,6 +73,7 @@
 }
 
 .info {
+  flex: 1 1 auto;
   min-width: 0;
 }
 
@@ -78,4 +87,33 @@
   margin-top: 8rpx;
   font-size: 24rpx;
   font-weight: 800;
+}
+
+.best-score {
+  flex: 0 0 134rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 98rpx;
+  padding: 8rpx 10rpx;
+  border: 6rpx solid #111;
+  border-radius: 8rpx;
+  box-sizing: border-box;
+  background: #e33124;
+  color: #fff;
+  box-shadow: 6rpx 6rpx 0 #111;
+}
+
+.best-number {
+  font-size: 48rpx;
+  font-weight: 900;
+  line-height: 1;
+}
+
+.best-label {
+  margin-top: 8rpx;
+  font-size: 20rpx;
+  font-weight: 900;
+  line-height: 1;
 }
