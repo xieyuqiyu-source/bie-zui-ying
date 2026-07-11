@@ -1,7 +1,21 @@
 <view class="battle" bindtap="tapBattle">
   <view class="top">
     <view class="time">{{phaseText}}</view>
-    <view class="score">{{score}}</view>
+    <view class="live-status {{bothOnline ? 'is-online' : ''}}">
+      <view class="live-dot"></view>
+      <text>{{liveText}}</text>
+    </view>
+    <view class="score-board">
+      <view class="score-card mine">
+        <view class="score-label">我方手指</view>
+        <view class="score-number">{{score}}</view>
+      </view>
+      <view class="score-vs">VS</view>
+      <view class="score-card rival">
+        <view class="score-label">{{opponentName}}</view>
+        <view class="score-number">{{opponentScore}}</view>
+      </view>
+    </view>
     <view class="hint">{{hint}}</view>
   </view>
   <view class="tap-zone">
@@ -9,4 +23,3 @@
     <view class="tap-sub">点这里，别解释</view>
   </view>
 </view>
-

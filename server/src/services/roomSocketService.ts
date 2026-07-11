@@ -14,6 +14,15 @@ function send(socket: WebSocket, payload: unknown) {
   }
 }
 
+function broadcastRaw(roomId: string, payload: unknown) {
+  const clients = roomClients.get(roomId);
+  if (!clients || clients.size === 0) return;
+
+  for (const { socket } of clients.values()) {
+    send(socket, payload);
+  }
+}
+
 function onlineUserIds(roomId: string) {
   const clients = roomClients.get(roomId);
   if (!clients) return [];
@@ -28,6 +37,23 @@ export const roomSocketService = {
       roomClients.set(roomId, new Map());
     }
     roomClients.get(roomId)!.set(socket, { socket, userId });
+
+    socket.on("message", (raw: { toString(): string }) => {
+      try {
+        const message = JSON.parse(raw.toString()) as { type?: string; score?: number };
+        if (message.type !== "battle:score") return;
+
+        const score = Math.max(0, Math.min(Math.floor(Number(message.score) || 0), 180));
+        broadcastRaw(roomId, {
+          type: "battle:score",
+          userId,
+          score,
+          sentAt: Date.now()
+        });
+      } catch (error) {
+        // Ignore malformed client messages.
+      }
+    });
 
     socket.on("close", () => {
       const clients = roomClients.get(roomId);
