@@ -65,15 +65,26 @@ Page({
   login() {
     wx.login({
       success: async (res) => {
-        const userInfo = this.data.user || {};
-        const result = await api.wechatLogin({
-          code: res.code,
-          nickname: userInfo.nickname,
-          avatarUrl: userInfo.avatarUrl
-        });
-        saveUser(result.user);
-        this.setData({ user: result.user });
-        wx.showToast({ title: "已留名" });
+        try {
+          const userInfo = this.data.user || {};
+          const result = await api.wechatLogin({
+            code: res.code,
+            nickname: userInfo.nickname,
+            avatarUrl: userInfo.avatarUrl
+          });
+          if (result.error) {
+            wx.showToast({ title: "登录暂时不服", icon: "none" });
+            return;
+          }
+          saveUser(result.user);
+          this.setData({ user: result.user });
+          wx.showToast({ title: "已留名" });
+        } catch (error) {
+          wx.showToast({ title: "网络晃了一下", icon: "none" });
+        }
+      },
+      fail() {
+        wx.showToast({ title: "微信登录失败", icon: "none" });
       }
     });
   }

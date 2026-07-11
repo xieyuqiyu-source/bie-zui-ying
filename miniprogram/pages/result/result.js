@@ -52,11 +52,21 @@ Page({
   login() {
     wx.login({
       success: async (res) => {
-        const result = await api.wechatLogin({ code: res.code });
-        saveUser(result.user);
-        wx.showToast({ title: "已留名" });
+        try {
+          const result = await api.wechatLogin({ code: res.code });
+          if (result.error) {
+            wx.showToast({ title: "登录暂时不服", icon: "none" });
+            return;
+          }
+          saveUser(result.user);
+          wx.showToast({ title: "已留名" });
+        } catch (error) {
+          wx.showToast({ title: "网络晃了一下", icon: "none" });
+        }
+      },
+      fail() {
+        wx.showToast({ title: "微信登录失败", icon: "none" });
       }
     });
   }
 });
-
