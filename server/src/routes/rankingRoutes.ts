@@ -10,7 +10,6 @@ export async function rankingRoutes(app: FastifyInstance) {
       })
       .parse(request.query);
 
-    return { items: roomService.rankings(query.type) };
+    return { items: await roomService.rankings(query.type) };
   });
 }
-

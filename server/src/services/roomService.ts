@@ -1,12 +1,19 @@
 import { nanoid } from "nanoid";
-import { store } from "../data/store.js";
+import { db } from "../data/mysql.js";
+import { redis } from "../data/redis.js";
 import type { Match, Room, User } from "../types/domain.js";
 import { addMinutesIso, nowIso } from "../utils/time.js";
+import { titleService } from "./titleService.js";
 import { trashTalkService } from "./trashTalkService.js";
-import { resolveTitle } from "./titleService.js";
+import { userService } from "./userService.js";
 
 const MATCH_SECONDS = 10;
 const MAX_REASONABLE_SCORE = 180;
+const ROOM_TTL_SECONDS = 60 * 15;
+
+function roomKey(roomId: string) {
+  return `bie-zui-ying:room:${roomId}`;
+}
 
 function publicUser(user: User) {
   return {
@@ -20,21 +27,58 @@ function publicUser(user: User) {
   };
 }
 
-function serializeRoom(room: Room) {
+async function saveRoom(room: Room) {
+  await redis.set(roomKey(room.id), JSON.stringify(room), "EX", ROOM_TTL_SECONDS);
+}
+
+async function loadRoom(roomId: string) {
+  const raw = await redis.get(roomKey(roomId));
+  return raw ? (JSON.parse(raw) as Room) : undefined;
+}
+
+async function serializeRoom(room: Room) {
+  const owner = await userService.getUser(room.owner.userId);
+  const guest = room.guest ? await userService.getUser(room.guest.userId) : undefined;
+
+  if (!owner) throw new Error("OWNER_NOT_FOUND");
+
   return {
     ...room,
-    ownerUser: publicUser(store.users.get(room.owner.userId)!),
-    guestUser: room.guest ? publicUser(store.users.get(room.guest.userId)!) : undefined
+    ownerUser: publicUser(owner),
+    guestUser: guest ? publicUser(guest) : undefined
   };
 }
 
 function touchUser(user: User) {
-  user.title = resolveTitle(user);
+  user.title = titleService.resolveTitle(user);
   user.updatedAt = nowIso();
 }
 
+function botScore() {
+  const botBase = 58 + Math.floor(Math.random() * 42);
+  const swing = Math.floor(Math.random() * 19) - 9;
+  return Math.max(30, Math.min(MAX_REASONABLE_SCORE, botBase + swing));
+}
+
+async function insertMatch(match: Match) {
+  await db.execute(
+    `INSERT INTO matches (
+      id, room_id, player_a_id, player_b_id, player_a_score, player_b_score,
+      winner_id, result_type, duration_seconds, trash_talk, created_at
+    ) VALUES (
+      :id, :roomId, :playerAId, :playerBId, :playerAScore, :playerBScore,
+      :winnerId, :resultType, :durationSeconds, :trashTalk, :createdAt
+    )`,
+    {
+      ...match,
+      winnerId: match.winnerId ?? null,
+      createdAt: new Date(match.createdAt)
+    }
+  );
+}
+
 export const roomService = {
-  createRoom(owner: User) {
+  async createRoom(owner: User) {
     const room: Room = {
       id: nanoid(16),
       code: nanoid(8),
@@ -43,11 +87,11 @@ export const roomService = {
       createdAt: nowIso(),
       expiresAt: addMinutesIso(10)
     };
-    store.rooms.set(room.id, room);
+    await saveRoom(room);
     return serializeRoom(room);
   },
 
-  createBotRoom(owner: User, bot: User) {
+  async createBotRoom(owner: User, bot: User) {
     const playStartAt = new Date(Date.now() + 3000).toISOString();
     const playEndsAt = new Date(Date.now() + 3000 + MATCH_SECONDS * 1000).toISOString();
     const room: Room = {
@@ -63,31 +107,35 @@ export const roomService = {
       createdAt: nowIso(),
       expiresAt: addMinutesIso(10)
     };
-    store.rooms.set(room.id, room);
+    await saveRoom(room);
     return serializeRoom(room);
   },
 
-  getRoom(roomId: string) {
-    const room = store.rooms.get(roomId);
+  async getRoom(roomId: string) {
+    const room = await loadRoom(roomId);
     return room ? serializeRoom(room) : undefined;
   },
 
-  joinRoom(roomId: string, guest: User) {
-    const room = store.rooms.get(roomId);
+  async joinRoom(roomId: string, guest: User) {
+    const room = await loadRoom(roomId);
     if (!room) throw new Error("ROOM_NOT_FOUND");
     if (room.status !== "waiting") throw new Error("ROOM_NOT_JOINABLE");
     if (room.owner.userId === guest.id) return serializeRoom(room);
     if (room.guest && room.guest.userId !== guest.id) throw new Error("ROOM_FULL");
     room.guest = { userId: guest.id, ready: false };
+    await saveRoom(room);
     return serializeRoom(room);
   },
 
-  setReady(roomId: string, userId: string) {
-    const room = store.rooms.get(roomId);
+  async setReady(roomId: string, userId: string) {
+    const room = await loadRoom(roomId);
     if (!room) throw new Error("ROOM_NOT_FOUND");
     if (room.owner.userId === userId) room.owner.ready = true;
     if (room.guest?.userId === userId) room.guest.ready = true;
-    if (!room.guest) return serializeRoom(room);
+    if (!room.guest) {
+      await saveRoom(room);
+      return serializeRoom(room);
+    }
 
     if (room.owner.ready && room.guest.ready && room.status === "waiting") {
       const countdownStartAt = nowIso();
@@ -100,11 +148,12 @@ export const roomService = {
       room.matchId = nanoid(16);
     }
 
+    await saveRoom(room);
     return serializeRoom(room);
   },
 
-  submitScore(roomId: string, userId: string, score: number) {
-    const room = store.rooms.get(roomId);
+  async submitScore(roomId: string, userId: string, score: number) {
+    const room = await loadRoom(roomId);
     if (!room) throw new Error("ROOM_NOT_FOUND");
     if (!room.guest || !room.matchId) throw new Error("MATCH_NOT_READY");
     if (![room.owner.userId, room.guest.userId].includes(userId)) throw new Error("PLAYER_NOT_IN_ROOM");
@@ -120,26 +169,24 @@ export const roomService = {
       room.guest.submittedAt = nowIso();
     }
 
-    const owner = store.users.get(room.owner.userId)!;
-    const guest = store.users.get(room.guest.userId)!;
+    const owner = await userService.getUser(room.owner.userId);
+    const guest = await userService.getUser(room.guest.userId);
+    if (!owner || !guest) throw new Error("PLAYER_NOT_FOUND");
 
     if (guest.kind === "bot" && room.guest.score === undefined) {
-      const botBase = 58 + Math.floor(Math.random() * 42);
-      const swing = Math.floor(Math.random() * 19) - 9;
-      room.guest.score = Math.max(30, Math.min(MAX_REASONABLE_SCORE, botBase + swing));
+      room.guest.score = botScore();
       room.guest.submittedAt = nowIso();
     }
 
     if (owner.kind === "bot" && room.owner.score === undefined) {
-      const botBase = 58 + Math.floor(Math.random() * 42);
-      const swing = Math.floor(Math.random() * 19) - 9;
-      room.owner.score = Math.max(30, Math.min(MAX_REASONABLE_SCORE, botBase + swing));
+      room.owner.score = botScore();
       room.owner.submittedAt = nowIso();
     }
 
     if (room.owner.score === undefined || room.guest.score === undefined) {
       room.status = "playing";
-      return { room: serializeRoom(room), match: undefined };
+      await saveRoom(room);
+      return { room: await serializeRoom(room), match: undefined };
     }
 
     const ownerWon = room.owner.score > room.guest.score;
@@ -161,7 +208,6 @@ export const roomService = {
       createdAt: nowIso()
     };
 
-    store.matches.set(match.id, match);
     room.status = "finished";
     room.endedAt = nowIso();
 
@@ -194,18 +240,19 @@ export const roomService = {
     touchUser(owner);
     touchUser(guest);
 
-    return { room: serializeRoom(room), match };
+    await insertMatch(match);
+    await Promise.all([
+      owner.kind !== "bot" ? userService.saveUserStats(owner) : undefined,
+      guest.kind !== "bot" ? userService.saveUserStats(guest) : undefined,
+      saveRoom(room)
+    ]);
+
+    return { room: await serializeRoom(room), match };
   },
 
-  rankings(type: "wins" | "streak" | "bestScore" = "wins") {
-    const users = [...store.users.values()].filter((user) => user.kind !== "bot");
-    const sorted = users.sort((a, b) => {
-      if (type === "streak") return b.currentStreak - a.currentStreak;
-      if (type === "bestScore") return b.bestScore - a.bestScore;
-      return b.wins - a.wins;
-    });
-
-    return sorted.slice(0, 50).map((user, index) => ({
+  async rankings(type: "wins" | "streak" | "bestScore" = "wins") {
+    const users = await userService.rankings(type);
+    return users.map((user, index) => ({
       rank: index + 1,
       user: publicUser(user),
       currentStreak: user.currentStreak,

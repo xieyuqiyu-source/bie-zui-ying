@@ -10,8 +10,9 @@ button {
   margin: 0;
   padding: 0;
   border: 0;
-  overflow: visible;
+  overflow: hidden;
   background: transparent;
+  line-height: normal;
 }
 
 button::after {
@@ -51,6 +52,7 @@ button::after {
   justify-content: center;
   width: 100%;
   min-width: 0;
+  max-width: 100%;
   min-height: 104rpx;
   padding: 18rpx 20rpx;
   border: 6rpx solid #111;
@@ -62,6 +64,7 @@ button::after {
   white-space: normal;
   word-break: break-all;
   overflow-wrap: anywhere;
+  overflow: hidden;
   text-align: center;
 }
 

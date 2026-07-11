@@ -15,22 +15,22 @@ const scoreBodySchema = z.object({
 export async function roomRoutes(app: FastifyInstance) {
   app.post("/api/rooms", async (request) => {
     const body = userBodySchema.parse(request.body ?? {});
-    const user = userService.ensureUser(body.userId);
-    const room = roomService.createRoom(user);
+    const user = await userService.ensureUser(body.userId);
+    const room = await roomService.createRoom(user);
     return { user, room };
   });
 
   app.post("/api/rooms/bot", async (request) => {
     const body = userBodySchema.parse(request.body ?? {});
-    const user = userService.ensureUser(body.userId);
-    const bot = userService.createBotUser();
-    const room = roomService.createBotRoom(user, bot);
+    const user = await userService.ensureUser(body.userId);
+    const bot = await userService.createBotUser();
+    const room = await roomService.createBotRoom(user, bot);
     return { user, room };
   });
 
   app.get("/api/rooms/:roomId", async (request, reply) => {
     const params = z.object({ roomId: z.string() }).parse(request.params);
-    const room = roomService.getRoom(params.roomId);
+    const room = await roomService.getRoom(params.roomId);
     if (!room) return reply.code(404).send({ error: "ROOM_NOT_FOUND" });
     return { room };
   });
@@ -38,15 +38,15 @@ export async function roomRoutes(app: FastifyInstance) {
   app.post("/api/rooms/:roomId/join", async (request) => {
     const params = z.object({ roomId: z.string() }).parse(request.params);
     const body = userBodySchema.parse(request.body ?? {});
-    const user = userService.ensureUser(body.userId);
-    const room = roomService.joinRoom(params.roomId, user);
+    const user = await userService.ensureUser(body.userId);
+    const room = await roomService.joinRoom(params.roomId, user);
     return { user, room };
   });
 
   app.post("/api/rooms/:roomId/ready", async (request) => {
     const params = z.object({ roomId: z.string() }).parse(request.params);
     const body = z.object({ userId: z.string() }).parse(request.body);
-    const room = roomService.setReady(params.roomId, body.userId);
+    const room = await roomService.setReady(params.roomId, body.userId);
     return { room };
   });
 

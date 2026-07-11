@@ -35,9 +35,11 @@
 
 .actions {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
   gap: 22rpx;
+  width: 100%;
   min-width: 0;
+  box-sizing: border-box;
 }
 
 .actions .secondary-button {
@@ -45,4 +47,7 @@
   font-size: 30rpx;
   padding-left: 12rpx;
   padding-right: 12rpx;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
 }

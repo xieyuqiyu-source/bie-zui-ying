@@ -3,6 +3,8 @@ import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 import Fastify from "fastify";
 import { env } from "./config/env.js";
+import { initDatabase } from "./data/mysql.js";
+import { initRedis } from "./data/redis.js";
 import { authRoutes } from "./routes/authRoutes.js";
 import { healthRoutes } from "./routes/healthRoutes.js";
 import { rankingRoutes } from "./routes/rankingRoutes.js";
@@ -28,6 +30,8 @@ app.get("/ws/rooms/:roomId", { websocket: true }, (connection, request) => {
 });
 
 try {
+  await initDatabase();
+  await initRedis();
   await app.listen({ port: env.port, host: env.host });
 } catch (error) {
   app.log.error(error);

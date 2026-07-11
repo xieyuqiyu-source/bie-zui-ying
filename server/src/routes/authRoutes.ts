@@ -16,7 +16,7 @@ const wechatLoginSchema = z.object({
 export async function authRoutes(app: FastifyInstance) {
   app.post("/api/auth/anonymous", async (request) => {
     const body = anonymousSchema.parse(request.body ?? {});
-    const user = userService.ensureUser(body.userId);
+    const user = await userService.ensureUser(body.userId);
     return { user };
   });
 
@@ -53,7 +53,7 @@ export async function authRoutes(app: FastifyInstance) {
       };
     }
 
-    const user = userService.upsertWechatUser({
+    const user = await userService.upsertWechatUser({
       openid: session.openid,
       nickname: body.nickname,
       avatarUrl: body.avatarUrl

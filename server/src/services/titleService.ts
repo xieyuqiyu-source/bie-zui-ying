@@ -14,3 +14,6 @@ export function resolveTitle(user: User) {
   return "神秘手指";
 }
 
+export const titleService = {
+  resolveTitle
+};
