@@ -22,6 +22,7 @@ export async function initDatabase() {
       unionid VARCHAR(128) NULL,
       nickname VARCHAR(64) NOT NULL,
       avatar_url TEXT NULL,
+      profile_authorized BOOLEAN NOT NULL DEFAULT FALSE,
       title VARCHAR(64) NOT NULL DEFAULT '神秘手指',
       total_matches INT NOT NULL DEFAULT 0,
       wins INT NOT NULL DEFAULT 0,
@@ -37,6 +38,22 @@ export async function initDatabase() {
       INDEX idx_users_rank_best_score (kind, best_score)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `);
+
+  const [columns] = await db.execute<mysql.RowDataPacket[]>(
+    `SELECT COLUMN_NAME
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = :database
+       AND TABLE_NAME = 'users'
+       AND COLUMN_NAME = 'profile_authorized'`,
+    { database: env.mysql.database }
+  );
+
+  if (columns.length === 0) {
+    await db.execute(`
+      ALTER TABLE users
+      ADD COLUMN profile_authorized BOOLEAN NOT NULL DEFAULT FALSE AFTER avatar_url;
+    `);
+  }
 
   await db.execute(`
     CREATE TABLE IF NOT EXISTS matches (
@@ -57,4 +74,3 @@ export async function initDatabase() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `);
 }
-

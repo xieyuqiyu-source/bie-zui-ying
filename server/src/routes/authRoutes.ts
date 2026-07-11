@@ -13,6 +13,12 @@ const wechatLoginSchema = z.object({
   avatarUrl: z.string().optional()
 });
 
+const updateProfileSchema = z.object({
+  userId: z.string().min(1),
+  nickname: z.string().trim().min(1).max(32),
+  avatarUrl: z.string().optional()
+});
+
 export async function authRoutes(app: FastifyInstance) {
   app.post("/api/auth/anonymous", async (request) => {
     const body = anonymousSchema.parse(request.body ?? {});
@@ -60,5 +66,14 @@ export async function authRoutes(app: FastifyInstance) {
     });
 
     return { user, token: user.id };
+  });
+
+  app.post("/api/users/profile", async (request) => {
+    const body = updateProfileSchema.parse(request.body);
+    const user = await userService.updateProfile(body.userId, {
+      nickname: body.nickname,
+      avatarUrl: body.avatarUrl
+    });
+    return { user };
   });
 }

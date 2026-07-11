@@ -33,3 +33,75 @@
   border-bottom: 0;
 }
 
+.fame-mask {
+  position: fixed;
+  z-index: 20;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.fame-panel {
+  width: 100%;
+  max-height: 88vh;
+  padding: 34rpx;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.fame-title {
+  font-size: 42rpx;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.fame-copy {
+  margin-top: 18rpx;
+  font-size: 28rpx;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.avatar-picker {
+  width: 144rpx;
+  height: 144rpx;
+  margin: 28rpx auto 22rpx;
+  border: 6rpx solid #111;
+  border-radius: 50%;
+  background: #f7d84a;
+}
+
+.avatar-preview,
+.avatar-placeholder {
+  width: 132rpx;
+  height: 132rpx;
+  border-radius: 50%;
+}
+
+.avatar-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28rpx;
+  font-weight: 900;
+}
+
+.fame-input {
+  width: 100%;
+  height: 92rpx;
+  margin-bottom: 22rpx;
+  padding: 0 22rpx;
+  border: 6rpx solid #111;
+  border-radius: 8rpx;
+  box-sizing: border-box;
+  background: #fff;
+  font-size: 32rpx;
+  font-weight: 900;
+}

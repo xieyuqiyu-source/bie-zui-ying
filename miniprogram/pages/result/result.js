@@ -1,5 +1,5 @@
 const api = require("../../utils/api");
-const { saveUser } = require("../../utils/user");
+const { ensureUser, saveUser } = require("../../utils/user");
 
 Page({
   data: {
@@ -8,10 +8,17 @@ Page({
     ownerName: "房主",
     guestName: "兄弟",
     ownerScore: 0,
-    guestScore: 0
+    guestScore: 0,
+    user: {},
+    fameModalVisible: false,
+    fameNickname: "",
+    fameAvatarTemp: "",
+    savingProfile: false
   },
 
-  onLoad() {
+  async onLoad() {
+    const user = await ensureUser();
+    this.setData({ user });
     const app = getApp();
     const result = app.globalData.lastResult;
     if (!result || !result.match) {
@@ -49,24 +56,59 @@ Page({
     wx.reLaunch({ url: "/pages/home/home" });
   },
 
-  login() {
-    wx.login({
-      success: async (res) => {
-        try {
-          const result = await api.wechatLogin({ code: res.code });
-          if (result.error) {
-            wx.showToast({ title: "登录暂时不服", icon: "none" });
-            return;
-          }
-          saveUser(result.user);
-          wx.showToast({ title: "已留名" });
-        } catch (error) {
-          wx.showToast({ title: "网络晃了一下", icon: "none" });
-        }
-      },
-      fail() {
-        wx.showToast({ title: "微信登录失败", icon: "none" });
-      }
+  openFameModal() {
+    const user = this.data.user || {};
+    this.setData({
+      fameModalVisible: true,
+      fameNickname: user.profileAuthorized ? user.nickname : "",
+      fameAvatarTemp: ""
     });
+  },
+
+  closeFameModal() {
+    this.setData({ fameModalVisible: false, savingProfile: false });
+  },
+
+  chooseAvatar(event) {
+    this.setData({ fameAvatarTemp: event.detail.avatarUrl });
+  },
+
+  inputFameNickname(event) {
+    this.setData({ fameNickname: event.detail.value });
+  },
+
+  async saveProfile() {
+    if (this.data.savingProfile) return;
+    const nickname = (this.data.fameNickname || "").trim();
+    if (!nickname) {
+      wx.showToast({ title: "名号不能为空", icon: "none" });
+      return;
+    }
+
+    this.setData({ savingProfile: true });
+    try {
+      const user = await ensureUser();
+      let avatarUrl = user.avatarUrl;
+      if (this.data.fameAvatarTemp) {
+        const uploaded = await api.uploadAvatar(user.id, this.data.fameAvatarTemp);
+        avatarUrl = uploaded.avatarUrl;
+      }
+      const result = await api.updateProfile({
+        userId: user.id,
+        nickname,
+        avatarUrl
+      });
+      saveUser(result.user);
+      this.setData({
+        user: result.user,
+        fameModalVisible: false,
+        fameAvatarTemp: ""
+      });
+      wx.showToast({ title: "已留下威名" });
+    } catch (error) {
+      wx.showToast({ title: "留名失败，稍后再装", icon: "none" });
+    } finally {
+      this.setData({ savingProfile: false });
+    }
   }
 });

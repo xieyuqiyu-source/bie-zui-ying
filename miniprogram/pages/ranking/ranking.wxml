@@ -11,10 +11,11 @@
 
   <view wx:for="{{items}}" wx:key="rank" class="rank-item comic-panel">
     <view class="rank">#{{item.rank}}</view>
+    <image wx:if="{{item.user.profileAuthorized && item.user.avatarUrl}}" class="rank-avatar" src="{{item.user.avatarUrl}}" mode="aspectFill"></image>
+    <view wx:else class="rank-avatar fallback">{{item.user.initial || '名'}}</view>
     <view class="info">
       <view class="name">{{item.user.nickname}}</view>
       <view class="meta">{{item.user.title}} · 胜 {{item.user.wins}} · 最佳 {{item.user.bestScore}}</view>
     </view>
   </view>
 </view>
-

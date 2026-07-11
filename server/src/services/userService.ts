@@ -10,6 +10,7 @@ interface UserRow extends RowDataPacket {
   openid?: string | null;
   nickname: string;
   avatar_url?: string | null;
+  profile_authorized: number | boolean;
   title: string;
   total_matches: number;
   wins: number;
@@ -42,6 +43,7 @@ function rowToUser(row: UserRow): User {
     openid: row.openid || undefined,
     nickname: row.nickname,
     avatarUrl: row.avatar_url || undefined,
+    profileAuthorized: Boolean(row.profile_authorized),
     title: row.title,
     totalMatches: row.total_matches,
     wins: row.wins,
@@ -58,10 +60,10 @@ function rowToUser(row: UserRow): User {
 async function insertUser(user: User) {
   await db.execute(
     `INSERT INTO users (
-      id, kind, openid, nickname, avatar_url, title, total_matches, wins, losses, draws,
+      id, kind, openid, nickname, avatar_url, profile_authorized, title, total_matches, wins, losses, draws,
       current_streak, best_streak, best_score, created_at, updated_at
     ) VALUES (
-      :id, :kind, :openid, :nickname, :avatarUrl, :title, :totalMatches, :wins, :losses, :draws,
+      :id, :kind, :openid, :nickname, :avatarUrl, :profileAuthorized, :title, :totalMatches, :wins, :losses, :draws,
       :currentStreak, :bestStreak, :bestScore, :createdAt, :updatedAt
     )`,
     {
@@ -82,6 +84,7 @@ export const userService = {
       id,
       kind: "anonymous",
       nickname: makeAnonymousName(),
+      profileAuthorized: false,
       title: "神秘手指",
       totalMatches: 0,
       wins: 0,
@@ -104,6 +107,7 @@ export const userService = {
       id,
       kind: "bot",
       nickname: makeBotName(),
+      profileAuthorized: true,
       title: "系统陪练",
       totalMatches: 0,
       wins: 0,
@@ -140,11 +144,17 @@ export const userService = {
 
     if (rows[0]) {
       await db.execute(
-        `UPDATE users SET nickname = :nickname, avatar_url = :avatarUrl, updated_at = :updatedAt WHERE id = :id`,
+        `UPDATE users SET
+          nickname = :nickname,
+          avatar_url = :avatarUrl,
+          profile_authorized = :profileAuthorized,
+          updated_at = :updatedAt
+        WHERE id = :id`,
         {
           id: rows[0].id,
           nickname: input.nickname || rows[0].nickname,
           avatarUrl: input.avatarUrl || rows[0].avatar_url || null,
+          profileAuthorized: Boolean(input.nickname || input.avatarUrl || rows[0].profile_authorized),
           updatedAt: toDate(now)
         }
       );
@@ -152,6 +162,7 @@ export const userService = {
         ...rowToUser(rows[0]),
         nickname: input.nickname || rows[0].nickname,
         avatarUrl: input.avatarUrl || rows[0].avatar_url || undefined,
+        profileAuthorized: Boolean(input.nickname || input.avatarUrl || rows[0].profile_authorized),
         updatedAt: now
       };
     }
@@ -163,6 +174,7 @@ export const userService = {
       openid: input.openid,
       nickname: input.nickname || makeAnonymousName(),
       avatarUrl: input.avatarUrl,
+      profileAuthorized: Boolean(input.nickname || input.avatarUrl),
       title: "神秘手指",
       totalMatches: 0,
       wins: 0,
@@ -196,6 +208,31 @@ export const userService = {
         updatedAt: toDate(user.updatedAt)
       }
     );
+  },
+
+  async updateProfile(userId: string, input: { nickname: string; avatarUrl?: string }) {
+    const nickname = input.nickname.trim().slice(0, 32) || makeAnonymousName();
+    const avatarUrl = input.avatarUrl || null;
+    const now = nowIso();
+
+    await db.execute(
+      `UPDATE users SET
+        nickname = :nickname,
+        avatar_url = :avatarUrl,
+        profile_authorized = TRUE,
+        updated_at = :updatedAt
+      WHERE id = :id`,
+      {
+        id: userId,
+        nickname,
+        avatarUrl,
+        updatedAt: toDate(now)
+      }
+    );
+
+    const user = await this.getUser(userId);
+    if (!user) throw new Error("USER_NOT_FOUND");
+    return user;
   },
 
   async rankings(type: "wins" | "streak" | "bestScore" = "wins") {

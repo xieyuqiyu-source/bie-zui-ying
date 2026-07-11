@@ -19,7 +19,9 @@ function publicUser(user: User) {
   return {
     id: user.id,
     nickname: user.nickname,
+    initial: user.nickname.slice(0, 1),
     avatarUrl: user.avatarUrl,
+    profileAuthorized: user.profileAuthorized,
     title: user.title,
     wins: user.wins,
     losses: user.losses,

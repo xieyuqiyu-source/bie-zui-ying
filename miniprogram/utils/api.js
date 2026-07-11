@@ -59,6 +59,36 @@ module.exports = {
     });
   },
 
+  updateProfile(payload) {
+    return request("/api/users/profile", {
+      method: "POST",
+      data: payload
+    });
+  },
+
+  uploadAvatar(userId, filePath) {
+    return new Promise((resolve, reject) => {
+      wx.uploadFile({
+        url: `${API_BASE_URL}/api/uploads/avatar?userId=${encodeURIComponent(userId)}`,
+        filePath,
+        name: "avatar",
+        timeout: 10000,
+        success(res) {
+          if (res.statusCode < 200 || res.statusCode >= 300) {
+            reject({ error: "UPLOAD_FAILED", statusCode: res.statusCode, data: res.data });
+            return;
+          }
+          try {
+            resolve(JSON.parse(res.data));
+          } catch (error) {
+            reject({ error: "UPLOAD_PARSE_FAILED" });
+          }
+        },
+        fail: reject
+      });
+    });
+  },
+
   createRoom(userId) {
     return request("/api/rooms", {
       method: "POST",

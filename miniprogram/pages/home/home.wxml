@@ -20,6 +20,20 @@
 
   <view class="actions">
     <button class="secondary-button" bindtap="goRanking">排行榜</button>
-    <button class="secondary-button" bindtap="login">留名上榜</button>
+    <button class="secondary-button" bindtap="openFameModal">留名上榜</button>
+  </view>
+
+  <view wx:if="{{fameModalVisible}}" class="fame-mask">
+    <view class="fame-panel comic-panel">
+      <view class="fame-title">是否留下你的赫赫威名？</view>
+      <view class="fame-copy">授权后，你的头像和昵称会出现在排行榜。继续匿名也能玩，只是系统会叫你神秘手指。</view>
+      <button class="avatar-picker" open-type="chooseAvatar" bindchooseavatar="chooseAvatar">
+        <image wx:if="{{fameAvatarTemp || user.avatarUrl}}" class="avatar-preview" src="{{fameAvatarTemp || user.avatarUrl}}" mode="aspectFill"></image>
+        <view wx:else class="avatar-placeholder">头像</view>
+      </button>
+      <input class="fame-input" type="nickname" maxlength="32" value="{{fameNickname}}" placeholder="输入你的响亮名号" bindinput="inputFameNickname" />
+      <button class="primary-button" loading="{{savingProfile}}" bindtap="saveProfile">留下赫赫威名</button>
+      <button class="secondary-button" bindtap="closeFameModal">匿名也很帅</button>
+    </view>
   </view>
 </view>

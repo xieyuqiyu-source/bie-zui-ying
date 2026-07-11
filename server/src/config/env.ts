@@ -13,5 +13,7 @@ export const env = {
     password: process.env.MYSQL_PASSWORD ?? "",
     database: process.env.MYSQL_DATABASE ?? "bie_zui_ying"
   },
-  redisUrl: process.env.REDIS_URL ?? "redis://127.0.0.1:6379"
+  redisUrl: process.env.REDIS_URL ?? "redis://127.0.0.1:6379",
+  publicApiBaseUrl: process.env.PUBLIC_API_BASE_URL ?? "http://localhost:8787",
+  uploadDir: process.env.UPLOAD_DIR ?? "uploads"
 };

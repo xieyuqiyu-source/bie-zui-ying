@@ -10,6 +10,7 @@ export interface User {
   openid?: string;
   nickname: string;
   avatarUrl?: string;
+  profileAuthorized: boolean;
   title: string;
   totalMatches: number;
   wins: number;
