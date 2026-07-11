@@ -107,7 +107,7 @@ Page({
     if (!this.data.roomId) return;
     try {
       const result = await api.getRoom(this.data.roomId);
-      this.updateRoom(result.room);
+      this.updateRoom(result.room, result.onlineUserIds);
     } catch (error) {
       if (!options.silent) {
         wx.showToast({ title: "房间迷路了", icon: "none" });
@@ -121,7 +121,7 @@ Page({
     try {
       const user = await ensureUser();
       const result = await api.ready(this.data.roomId, user.id);
-      this.updateRoom(result.room);
+      this.updateRoom(result.room, result.onlineUserIds);
       if (result.room.status === "countdown") {
         wx.redirectTo({
           url: `/pages/battle/battle?roomId=${result.room.id}`

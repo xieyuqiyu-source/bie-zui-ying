@@ -21,6 +21,8 @@ function onlineUserIds(roomId: string) {
 }
 
 export const roomSocketService = {
+  onlineUserIds,
+
   join(roomId: string, userId: string, socket: WebSocket) {
     if (!roomClients.has(roomId)) {
       roomClients.set(roomId, new Map());
