@@ -29,6 +29,54 @@
   line-height: 1.35;
 }
 
+.how-play {
+  padding: 26rpx;
+}
+
+.how-title {
+  font-size: 34rpx;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.how-list {
+  display: flex;
+  flex-direction: column;
+  gap: 18rpx;
+  margin-top: 20rpx;
+}
+
+.how-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16rpx;
+  min-width: 0;
+}
+
+.how-num {
+  flex: 0 0 44rpx;
+  width: 44rpx;
+  height: 44rpx;
+  border: 5rpx solid #111;
+  border-radius: 50%;
+  box-sizing: border-box;
+  background: #f7d84a;
+  font-size: 24rpx;
+  font-weight: 900;
+  line-height: 34rpx;
+  text-align: center;
+}
+
+.how-copy {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 28rpx;
+  font-weight: 800;
+  line-height: 1.35;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
 .start {
   margin-top: 20rpx;
 }

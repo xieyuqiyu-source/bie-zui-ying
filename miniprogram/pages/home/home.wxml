@@ -10,6 +10,24 @@
 
   <view class="taunt">{{taunt}}</view>
 
+  <view class="how-play comic-panel">
+    <view class="how-title">玩法很简单</view>
+    <view class="how-list">
+      <view class="how-item">
+        <view class="how-num">1</view>
+        <view class="how-copy">拉兄弟进房间，双方准备，嘴先别太硬。</view>
+      </view>
+      <view class="how-item">
+        <view class="how-num">2</view>
+        <view class="how-copy">倒计时结束后疯狂点屏幕，实时看对方手速。</view>
+      </view>
+      <view class="how-item">
+        <view class="how-num">3</view>
+        <view class="how-copy">10 秒定胜负，上榜留名，系统负责阴阳怪气。</view>
+      </view>
+    </view>
+  </view>
+
   <button class="primary-button start" loading="{{creating}}" bindtap="createRoom">
     发起一场嘴硬测试
   </button>
