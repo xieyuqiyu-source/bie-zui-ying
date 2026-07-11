@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://124.223.111.163/bie-zui-ying-api";
+const API_BASE_URL = "https://aitools.ccoos.cn/bie-zui-ying-api";
 
 module.exports = {
   API_BASE_URL
