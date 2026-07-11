@@ -15,9 +15,11 @@ Page({
     bothOnline: false,
     liveText: "连线中",
     phase: "loading",
+    isFinished: false,
     phaseText: "加载中",
     tapText: "准备",
-    hint: "尊严加载中"
+    hint: "尊严加载中",
+    resultDelayText: ""
   },
 
   async onLoad(query) {
@@ -34,6 +36,7 @@ Page({
 
   onUnload() {
     if (this.timer) clearInterval(this.timer);
+    if (this.redirectTimer) clearTimeout(this.redirectTimer);
     if (this.liveScoreTimer) clearTimeout(this.liveScoreTimer);
     if (this.socketTask) {
       this.socketTask.close({ code: 1000, reason: "leave battle" });
@@ -196,9 +199,11 @@ Page({
 
     this.setData({
       phase: "finished",
+      isFinished: true,
       phaseText: "结束",
       tapText: "收手",
-      hint: "系统正在整理说辞"
+      hint: "系统正在整理说辞",
+      resultDelayText: "别点了，正在送你去接受审判"
     });
 
     const user = this.data.user && this.data.user.id ? this.data.user : await ensureUser();
@@ -212,8 +217,10 @@ Page({
     const app = getApp();
     app.globalData.lastResult = result;
 
-    wx.redirectTo({
-      url: `/pages/result/result?roomId=${this.data.roomId}`
-    });
+    this.redirectTimer = setTimeout(() => {
+      wx.redirectTo({
+        url: `/pages/result/result?roomId=${this.data.roomId}`
+      });
+    }, 1200);
   }
 });

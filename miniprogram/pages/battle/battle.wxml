@@ -18,8 +18,9 @@
     </view>
     <view class="hint">{{hint}}</view>
   </view>
-  <view class="tap-zone">
+  <view class="tap-zone {{isFinished ? 'is-finished' : ''}}">
     <view class="tap-main">{{tapText}}</view>
     <view class="tap-sub">点这里，别解释</view>
+    <view wx:if="{{resultDelayText}}" class="result-delay">{{resultDelayText}}</view>
   </view>
 </view>
