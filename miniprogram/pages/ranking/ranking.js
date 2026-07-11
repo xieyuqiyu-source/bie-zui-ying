@@ -2,7 +2,7 @@ const api = require("../../utils/api");
 
 Page({
   data: {
-    type: "wins",
+    type: "bestScore",
     items: []
   },
 
@@ -19,4 +19,3 @@ Page({
     this.setData({ type: event.currentTarget.dataset.type }, () => this.load());
   }
 });
-
