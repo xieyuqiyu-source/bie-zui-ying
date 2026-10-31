@@ -43,6 +43,7 @@ export interface Room {
   createdAt: string;
   expiresAt: string;
   endedAt?: string;
+  rematchRoomId?: string;
 }
 
 export interface Match {

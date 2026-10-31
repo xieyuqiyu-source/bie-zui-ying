@@ -11,6 +11,8 @@ import { userService } from "./userService.js";
 const MATCH_SECONDS = 10;
 const MAX_REASONABLE_SCORE = 180;
 const ROOM_TTL_SECONDS = 60 * 15;
+// How long after playEndsAt we wait for a player's score before settling without it.
+const SUBMIT_GRACE_MS = 10_000;
 const roomLocks = new Map<string, Promise<void>>();
 
 interface MatchRow extends RowDataPacket {
@@ -136,6 +138,108 @@ async function findMatchByRoom(roomId: string) {
   return rows[0] ? rowToMatch(rows[0]) : undefined;
 }
 
+function isOverdue(room: Room) {
+  if (room.status !== "countdown" && room.status !== "playing") return false;
+  if (!room.guest || !room.matchId || !room.playEndsAt) return false;
+  return Date.now() > new Date(room.playEndsAt).getTime() + SUBMIT_GRACE_MS;
+}
+
+async function settleMatch(room: Room, owner: User, guest: User) {
+  const guestPlayer = room.guest!;
+  const ownerAbsent = room.owner.score === undefined;
+  const guestAbsent = guestPlayer.score === undefined;
+  const ownerScore = room.owner.score ?? 0;
+  const guestScore = guestPlayer.score ?? 0;
+
+  const ownerWon = ownerScore > guestScore;
+  const guestWon = guestScore > ownerScore;
+  const winnerId = ownerWon ? owner.id : guestWon ? guest.id : undefined;
+  const trashTalk = winnerId ? trashTalkService.win() : trashTalkService.draw();
+
+  const match: Match = {
+    id: room.matchId!,
+    roomId: room.id,
+    playerAId: owner.id,
+    playerBId: guest.id,
+    playerAScore: ownerScore,
+    playerBScore: guestScore,
+    winnerId,
+    resultType: winnerId ? "win" : "draw",
+    durationSeconds: MATCH_SECONDS,
+    trashTalk,
+    createdAt: nowIso()
+  };
+
+  room.owner.score = ownerScore;
+  guestPlayer.score = guestScore;
+  room.status = "finished";
+  room.endedAt = nowIso();
+
+  // A match nobody submitted to says nothing about either player, so it doesn't count.
+  const rankedMatch = owner.kind !== "bot" && guest.kind !== "bot" && !(ownerAbsent && guestAbsent);
+
+  if (rankedMatch) {
+    for (const user of [owner, guest]) {
+      user.totalMatches += 1;
+      user.bestScore = Math.max(user.bestScore, user.id === owner.id ? ownerScore : guestScore);
+    }
+
+    if (!winnerId) {
+      owner.draws += 1;
+      guest.draws += 1;
+      owner.currentStreak = 0;
+      guest.currentStreak = 0;
+    } else {
+      const winner = winnerId === owner.id ? owner : guest;
+      const loser = winnerId === owner.id ? guest : owner;
+      winner.wins += 1;
+      winner.currentStreak += 1;
+      winner.bestStreak = Math.max(winner.bestStreak, winner.currentStreak);
+      loser.losses += 1;
+      loser.currentStreak = 0;
+    }
+
+    touchUser(owner);
+    touchUser(guest);
+  }
+
+  await insertMatch(match);
+  await Promise.all([
+    rankedMatch ? userService.saveUserStats(owner) : undefined,
+    rankedMatch ? userService.saveUserStats(guest) : undefined,
+    saveRoom(room)
+  ]);
+
+  return match;
+}
+
+async function loadPlayers(room: Room) {
+  const owner = await userService.getUser(room.owner.userId);
+  const guest = room.guest ? await userService.getUser(room.guest.userId) : undefined;
+  if (!owner || !guest) throw new Error("PLAYER_NOT_FOUND");
+  return { owner, guest };
+}
+
+function fillBotScores(room: Room, owner: User, guest: User) {
+  if (guest.kind === "bot" && room.guest!.score === undefined) {
+    room.guest!.score = botScore();
+    room.guest!.submittedAt = nowIso();
+  }
+  if (owner.kind === "bot" && room.owner.score === undefined) {
+    room.owner.score = botScore();
+    room.owner.submittedAt = nowIso();
+  }
+}
+
+// Must be called while holding the room lock.
+async function settleIfOverdue(room: Room) {
+  if (!isOverdue(room)) return false;
+  const { owner, guest } = await loadPlayers(room);
+  fillBotScores(room, owner, guest);
+  await settleMatch(room, owner, guest);
+  return true;
+}
+
 export const roomService = {
   async createRoom(owner: User) {
     const room: Room = {
@@ -171,6 +275,7 @@ export const roomService = {
   },
 
   async createRematchRoom(roomId: string, userId: string) {
+    return withRoomLock(roomId, async () => {
     const oldRoom = await loadRoom(roomId);
     if (!oldRoom) throw new Error("ROOM_NOT_FOUND");
     if (oldRoom.status !== "finished") throw new Error("REMATCH_NEEDS_FINISHED_ROOM");
@@ -181,6 +286,12 @@ export const roomService = {
     const guest = await userService.getUser(oldRoom.guest.userId);
     if (!owner || !guest) throw new Error("PLAYER_NOT_FOUND");
     if (owner.kind === "bot" || guest.kind === "bot") throw new Error("REMATCH_NEEDS_REAL_PLAYERS");
+
+    // Both players may accept at once; hand them the same room.
+    if (oldRoom.rematchRoomId) {
+      const existing = await loadRoom(oldRoom.rematchRoomId);
+      if (existing) return serializeRoom(existing);
+    }
 
     const playStartAt = new Date(Date.now() + 3000).toISOString();
     const playEndsAt = new Date(Date.now() + 3000 + MATCH_SECONDS * 1000).toISOString();
@@ -199,11 +310,21 @@ export const roomService = {
     };
 
     await saveRoom(room);
+    oldRoom.rematchRoomId = room.id;
+    await saveRoom(oldRoom);
     return serializeRoom(room);
+    });
   },
 
   async getRoom(roomId: string) {
-    const room = await loadRoom(roomId);
+    let room = await loadRoom(roomId);
+    if (room && isOverdue(room)) {
+      room = await withRoomLock(roomId, async () => {
+        const fresh = await loadRoom(roomId);
+        if (fresh) await settleIfOverdue(fresh);
+        return fresh;
+      });
+    }
     return room ? serializeRoom(room) : undefined;
   },
 
@@ -212,6 +333,7 @@ export const roomService = {
   },
 
   async joinRoom(roomId: string, guest: User) {
+    return withRoomLock(roomId, async () => {
     const room = await loadRoom(roomId);
     if (!room) throw new Error("ROOM_NOT_FOUND");
     if (room.status !== "waiting") throw new Error("ROOM_NOT_JOINABLE");
@@ -220,11 +342,14 @@ export const roomService = {
     room.guest = { userId: guest.id, ready: false };
     await saveRoom(room);
     return serializeRoom(room);
+    });
   },
 
   async setReady(roomId: string, userId: string) {
+    return withRoomLock(roomId, async () => {
     const room = await loadRoom(roomId);
     if (!room) throw new Error("ROOM_NOT_FOUND");
+    if (room.owner.userId !== userId && room.guest?.userId !== userId) throw new Error("PLAYER_NOT_IN_ROOM");
     if (room.owner.userId === userId) room.owner.ready = true;
     if (room.guest?.userId === userId) room.guest.ready = true;
     if (!room.guest) {
@@ -245,6 +370,7 @@ export const roomService = {
 
     await saveRoom(room);
     return serializeRoom(room);
+    });
   },
 
   async submitScore(roomId: string, userId: string, score: number) {
@@ -254,7 +380,8 @@ export const roomService = {
     if (!room.guest || !room.matchId) throw new Error("MATCH_NOT_READY");
     if (![room.owner.userId, room.guest.userId].includes(userId)) throw new Error("PLAYER_NOT_IN_ROOM");
 
-    if (room.status === "finished") {
+    // Too late to count: settle with whatever was submitted in time.
+    if (await settleIfOverdue(room) || room.status === "finished") {
       return { room: await serializeRoom(room), match: await findMatchByRoom(room.id) };
     }
 
@@ -269,19 +396,8 @@ export const roomService = {
       room.guest.submittedAt = nowIso();
     }
 
-    const owner = await userService.getUser(room.owner.userId);
-    const guest = await userService.getUser(room.guest.userId);
-    if (!owner || !guest) throw new Error("PLAYER_NOT_FOUND");
-
-    if (guest.kind === "bot" && room.guest.score === undefined) {
-      room.guest.score = botScore();
-      room.guest.submittedAt = nowIso();
-    }
-
-    if (owner.kind === "bot" && room.owner.score === undefined) {
-      room.owner.score = botScore();
-      room.owner.submittedAt = nowIso();
-    }
+    const { owner, guest } = await loadPlayers(room);
+    fillBotScores(room, owner, guest);
 
     if (room.owner.score === undefined || room.guest.score === undefined) {
       room.status = "playing";
@@ -289,62 +405,7 @@ export const roomService = {
       return { room: await serializeRoom(room), match: undefined };
     }
 
-    const ownerWon = room.owner.score > room.guest.score;
-    const guestWon = room.guest.score > room.owner.score;
-    const winnerId = ownerWon ? owner.id : guestWon ? guest.id : undefined;
-    const trashTalk = winnerId ? trashTalkService.win() : trashTalkService.draw();
-
-    const match: Match = {
-      id: room.matchId,
-      roomId: room.id,
-      playerAId: owner.id,
-      playerBId: guest.id,
-      playerAScore: room.owner.score,
-      playerBScore: room.guest.score,
-      winnerId,
-      resultType: winnerId ? "win" : "draw",
-      durationSeconds: MATCH_SECONDS,
-      trashTalk,
-      createdAt: nowIso()
-    };
-
-    room.status = "finished";
-    room.endedAt = nowIso();
-
-    const rankedMatch = owner.kind !== "bot" && guest.kind !== "bot";
-
-    if (rankedMatch) {
-      for (const user of [owner, guest]) {
-        user.totalMatches += 1;
-        user.bestScore = Math.max(user.bestScore, user.id === owner.id ? room.owner.score : room.guest.score);
-      }
-
-      if (!winnerId) {
-        owner.draws += 1;
-        guest.draws += 1;
-        owner.currentStreak = 0;
-        guest.currentStreak = 0;
-      } else {
-        const winner = winnerId === owner.id ? owner : guest;
-        const loser = winnerId === owner.id ? guest : owner;
-        winner.wins += 1;
-        winner.currentStreak += 1;
-        winner.bestStreak = Math.max(winner.bestStreak, winner.currentStreak);
-        loser.losses += 1;
-        loser.currentStreak = 0;
-      }
-
-      touchUser(owner);
-      touchUser(guest);
-    }
-
-    await insertMatch(match);
-    await Promise.all([
-      rankedMatch ? userService.saveUserStats(owner) : undefined,
-      rankedMatch ? userService.saveUserStats(guest) : undefined,
-      saveRoom(room)
-    ]);
-
+    const match = await settleMatch(room, owner, guest);
     return { room: await serializeRoom(room), match };
     });
   },

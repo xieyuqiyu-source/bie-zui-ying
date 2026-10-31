@@ -206,8 +206,14 @@ Page({
       resultDelayText: "别点了，正在送你去接受审判"
     });
 
-    const user = this.data.user && this.data.user.id ? this.data.user : await ensureUser();
-    const result = await api.submitScore(this.data.roomId, user.id, this.data.score);
+    let result;
+    try {
+      const user = this.data.user && this.data.user.id ? this.data.user : await ensureUser();
+      result = await api.submitScore(this.data.roomId, user.id, this.data.score);
+    } catch (error) {
+      // The server settles overdue matches on its own; the result page polls until then.
+      result = null;
+    }
     try {
       const refreshed = await ensureUser({ refresh: true });
       saveUser(refreshed);

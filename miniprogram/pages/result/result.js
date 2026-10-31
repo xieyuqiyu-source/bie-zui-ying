@@ -30,7 +30,8 @@ Page({
     this.setData({ user, roomId: query.roomId || "" });
     this.connectResultSocket();
     const app = getApp();
-    const result = app.globalData.lastResult;
+    const lastResult = app.globalData.lastResult;
+    const result = lastResult && lastResult.room && lastResult.room.id === query.roomId ? lastResult : null;
     if (!this.renderResult(result)) {
       this.setData({
         headline: "等对方交卷",
@@ -264,7 +265,15 @@ Page({
       const result = await api.getRoom(this.data.roomId);
       this.renderResult(result);
     } catch (error) {
-      // Keep waiting; transient network hiccups should not trap the result page.
+      if (error && error.error === "ROOM_NOT_FOUND") {
+        this.stopResultPolling();
+        this.setData({
+          headline: "战报走丢了",
+          trashTalk: "房间已经散了，这局就当没发生过。",
+          waitingResult: false
+        });
+      }
+      // Otherwise keep waiting; transient network hiccups should not trap the result page.
     }
   },
 
