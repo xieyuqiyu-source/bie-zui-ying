@@ -1,5 +1,6 @@
 const api = require("../../utils/api");
-const { WS_BASE_URL } = require("../../utils/config");
+const { backToTapLobby } = require("../../utils/nav");
+const { openRoomSocket } = require("../../utils/roomSocket");
 const { ensureUser, saveUser } = require("../../utils/user");
 
 Page({
@@ -23,24 +24,51 @@ Page({
   },
 
   async onLoad(query) {
-    this.setData({ roomId: query.roomId });
-    const [user, result] = await Promise.all([
-      ensureUser(),
-      api.getRoom(query.roomId)
-    ]);
+    this.setData({ roomId: query.roomId || "" });
+    let user;
+    let result;
+    try {
+      [user, result] = await Promise.all([
+        ensureUser(),
+        api.getRoom(query.roomId)
+      ]);
+    } catch (error) {
+      const expired = api.errorCode(error) === "ROOM_NOT_FOUND";
+      wx.showModal({
+        title: expired ? "这局没了" : "没连上",
+        content: expired ? "房间已经散了，可能过期了。" : "网络在嘴硬，回大厅重新来一局吧。",
+        showCancel: false,
+        confirmText: "回大厅",
+        complete: () => backToTapLobby()
+      });
+      return;
+    }
+
+    const room = result.room;
     this.setData({ user });
-    this.updateRoom(result.room, result.onlineUserIds);
+    // Not started yet: nothing to count down to, go back to the waiting room.
+    if (room.status === "waiting" || !room.playStartAt || !room.playEndsAt) {
+      wx.redirectTo({ url: `/pages/room/room?roomId=${room.id}` });
+      return;
+    }
+
+    this.updateRoom(room, result.onlineUserIds);
     this.connectBattleSocket();
-    this.startCountdown(result.room);
+    this.startCountdown(room);
+  },
+
+  onShow() {
+    // Timers pause and the socket may drop while the app is in the background.
+    if (this.socket) this.socket.reconnectNow();
   },
 
   onUnload() {
     if (this.timer) clearInterval(this.timer);
     if (this.redirectTimer) clearTimeout(this.redirectTimer);
     if (this.liveScoreTimer) clearTimeout(this.liveScoreTimer);
-    if (this.socketTask) {
-      this.socketTask.close({ code: 1000, reason: "leave battle" });
-      this.socketTask = null;
+    if (this.socket) {
+      this.socket.close();
+      this.socket = null;
     }
   },
 
@@ -64,68 +92,46 @@ Page({
   connectBattleSocket() {
     if (!this.data.roomId || !this.data.user.id) return;
 
-    const socketTask = wx.connectSocket({
-      url: `${WS_BASE_URL}/ws/rooms/${this.data.roomId}?userId=${this.data.user.id}`
-    });
-    this.socketTask = socketTask;
-
-    socketTask.onOpen(() => {
-      this.setData({
-        socketReady: true,
-        bothOnline: this.data.opponentOnline,
-        liveText: this.data.opponentOnline ? "双方在线" : "连线中"
-      });
-      this.sendLiveScore(true);
-    });
-
-    socketTask.onMessage((event) => {
-      try {
-        const message = JSON.parse(event.data);
+    this.socket = openRoomSocket({
+      roomId: this.data.roomId,
+      userId: this.data.user.id,
+      onStatus: (ready) => {
+        if (ready) {
+          this.setData({
+            socketReady: true,
+            bothOnline: this.data.opponentOnline,
+            liveText: this.data.opponentOnline ? "双方在线" : "连线中"
+          });
+          this.sendLiveScore(true);
+        } else {
+          this.setData({
+            socketReady: false,
+            opponentOnline: false,
+            bothOnline: false,
+            liveText: "连线中"
+          });
+        }
+      },
+      onMessage: (message) => {
         if (message.type === "battle:score" && message.userId !== this.data.user.id) {
           this.setData({ opponentScore: Number(message.score) || 0 });
-          return;
-        }
-
-        if (message.type === "room:update" && message.room) {
+        } else if (message.type === "room:update" && message.room) {
           this.updateRoom(message.room, message.onlineUserIds);
-          return;
+        } else if (message.type === "room:connected" && this.data.room.id) {
+          this.updateRoom(this.data.room, message.onlineUserIds);
         }
-
-        if (message.type === "room:connected") {
-          const room = this.data.room;
-          if (room && room.id) {
-            this.updateRoom(room, message.onlineUserIds);
-          }
-        }
-      } catch (error) {
-        // Ignore malformed socket messages.
       }
-    });
-
-    socketTask.onClose(() => {
-      this.setData({
-        socketReady: false,
-        opponentOnline: false,
-        bothOnline: false,
-        liveText: "连线中"
-      });
-    });
-
-    socketTask.onError(() => {
-      this.setData({ socketReady: false, bothOnline: false, liveText: "连线中" });
     });
   },
 
   sendLiveScore(force = false) {
-    if (!this.socketTask || !this.data.socketReady) return;
+    if (!this.socket || !this.data.socketReady) return;
 
     const sendScore = () => {
       this.lastLiveScoreAt = Date.now();
-      this.socketTask.send({
-        data: JSON.stringify({
-          type: "battle:score",
-          score: this.data.score
-        })
+      this.socket.send({
+        type: "battle:score",
+        score: this.data.score
       });
     };
 

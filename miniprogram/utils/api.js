@@ -44,7 +44,18 @@ function request(path, options = {}) {
   return run(0);
 }
 
+// Business errors arrive either as {error: "ROOM_NOT_FOUND"} (404) or as a
+// 500 whose message is the code (thrown `new Error("ROOM_FULL")` on the server).
+function errorCode(error) {
+  if (!error) return "UNKNOWN";
+  if (/^[A-Z_]+$/.test(error.error || "")) return error.error;
+  if (/^[A-Z_]+$/.test(error.message || "")) return error.message;
+  return "UNKNOWN";
+}
+
 module.exports = {
+  errorCode,
+
   anonymous(userId) {
     return request("/api/auth/anonymous", {
       method: "POST",

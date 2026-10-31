@@ -1,6 +1,16 @@
 const api = require("../../utils/api");
-const { WS_BASE_URL } = require("../../utils/config");
+const { backToTapLobby } = require("../../utils/nav");
+const { openRoomSocket } = require("../../utils/roomSocket");
 const { ensureUser, saveUser } = require("../../utils/user");
+
+// The countdown is only 3 seconds, so the fallback poll must be well under that.
+const POLL_MS = 1000;
+
+const joinErrorText = {
+  ROOM_NOT_FOUND: "房间已经散了，可能过期了。",
+  ROOM_FULL: "这桌已经坐满了，你来晚一步。",
+  ROOM_NOT_JOINABLE: "这局已经开打了，下局请早。"
+};
 
 Page({
   data: {
@@ -18,24 +28,38 @@ Page({
   },
 
   async onLoad(query) {
-    const user = await ensureUser();
-    this.setData({ user, roomId: query.roomId });
+    this.setData({ roomId: query.roomId || "" });
 
-    if (query.role !== "owner") {
-      const result = await api.joinRoom(query.roomId, user.id);
-      saveUser(result.user);
+    try {
+      const user = await ensureUser();
+      this.setData({ user });
+
+      if (query.role !== "owner") {
+        const result = await api.joinRoom(query.roomId, user.id);
+        saveUser(result.user);
+      }
+
+      const result = await api.getRoom(query.roomId);
+      this.updateRoom(result.room, result.onlineUserIds);
+    } catch (error) {
+      this.leaveWithError(joinErrorText[api.errorCode(error)] || "房间没连上，网络可能在嘴硬。");
+      return;
     }
 
-    await this.refreshRoom();
     this.connectRoomSocket();
-    this.poller = setInterval(() => this.refreshRoom({ silent: true }), 4000);
+    this.poller = setInterval(() => this.refreshRoom(), POLL_MS);
+  },
+
+  onShow() {
+    if (this.socket) this.socket.reconnectNow();
   },
 
   onUnload() {
+    this.left = true;
     if (this.poller) clearInterval(this.poller);
-    if (this.socketTask) {
-      this.socketTask.close({ code: 1000, reason: "leave room" });
-      this.socketTask = null;
+    if (this.socket) {
+      this.socket.close();
+      this.socket = null;
     }
   },
 
@@ -46,7 +70,29 @@ Page({
     };
   },
 
+  leaveWithError(content) {
+    if (this.left) return;
+    this.left = true;
+    if (this.poller) clearInterval(this.poller);
+    wx.showModal({
+      title: "进不去了",
+      content,
+      showCancel: false,
+      confirmText: "回大厅",
+      complete: () => backToTapLobby()
+    });
+  },
+
+  goBattle(roomId) {
+    if (this.left) return;
+    this.left = true;
+    wx.redirectTo({
+      url: `/pages/battle/battle?roomId=${roomId}`
+    });
+  },
+
   updateRoom(room, onlineUserIds) {
+    if (this.left || !room) return;
     const nextOnlineUserIds = Array.isArray(onlineUserIds) ? onlineUserIds : this.data.onlineUserIds;
     const onlineSet = new Set(nextOnlineUserIds || []);
     this.setData({
@@ -60,58 +106,45 @@ Page({
     });
 
     if (room.status === "countdown" || room.status === "playing") {
-      wx.redirectTo({
-        url: `/pages/battle/battle?roomId=${room.id}`
-      });
+      this.goBattle(room.id);
+    } else if (room.status === "finished") {
+      // Both players were here but the match ran without us (e.g. phone was locked).
+      this.leaveWithError("这局已经打完了，你错过了。");
     }
   },
 
   connectRoomSocket() {
     if (!this.data.roomId || !this.data.user.id) return;
-    const socketTask = wx.connectSocket({
-      url: `${WS_BASE_URL}/ws/rooms/${this.data.roomId}?userId=${this.data.user.id}`
-    });
-    this.socketTask = socketTask;
-
-    socketTask.onOpen(() => {
-      this.setData({ socketReady: true });
-    });
-
-    socketTask.onMessage((event) => {
-      try {
-        const message = JSON.parse(event.data);
+    this.socket = openRoomSocket({
+      roomId: this.data.roomId,
+      userId: this.data.user.id,
+      onStatus: (ready) => {
+        if (this.left) return;
+        this.setData(ready ? { socketReady: true } : { socketReady: false, ownerOnline: false, guestOnline: false });
+      },
+      onMessage: (message) => {
         if (message.type === "room:update" && message.room) {
           this.updateRoom(message.room, message.onlineUserIds);
+        } else if (message.type === "room:connected" && this.data.room.id) {
+          this.updateRoom(this.data.room, message.onlineUserIds);
         }
-        if (message.type === "room:connected") {
-          const room = this.data.room;
-          if (room && room.id) {
-            this.updateRoom(room, message.onlineUserIds);
-          }
-        }
-      } catch (error) {
-        // Ignore malformed socket messages.
       }
-    });
-
-    socketTask.onClose(() => {
-      this.setData({ socketReady: false, ownerOnline: false, guestOnline: false });
-    });
-
-    socketTask.onError(() => {
-      this.setData({ socketReady: false });
     });
   },
 
-  async refreshRoom(options = {}) {
-    if (!this.data.roomId) return;
+  async refreshRoom() {
+    if (!this.data.roomId || this.refreshing) return;
+    this.refreshing = true;
     try {
       const result = await api.getRoom(this.data.roomId);
       this.updateRoom(result.room, result.onlineUserIds);
     } catch (error) {
-      if (!options.silent) {
-        wx.showToast({ title: "房间迷路了", icon: "none" });
+      if (api.errorCode(error) === "ROOM_NOT_FOUND") {
+        this.leaveWithError("房间过期了，兄弟一直没来。");
       }
+      // Network hiccups: keep polling quietly.
+    } finally {
+      this.refreshing = false;
     }
   },
 
@@ -122,15 +155,14 @@ Page({
       const user = await ensureUser();
       const result = await api.ready(this.data.roomId, user.id);
       this.updateRoom(result.room, result.onlineUserIds);
-      if (result.room.status === "countdown") {
-        wx.redirectTo({
-          url: `/pages/battle/battle?roomId=${result.room.id}`
-        });
-      }
     } catch (error) {
-      wx.showToast({ title: "准备失败", icon: "none" });
+      if (api.errorCode(error) === "ROOM_NOT_FOUND") {
+        this.leaveWithError("房间过期了，重新开一局吧。");
+      } else {
+        wx.showToast({ title: "准备失败", icon: "none" });
+      }
     } finally {
-      this.setData({ loading: false });
+      if (!this.left) this.setData({ loading: false });
     }
   }
 });

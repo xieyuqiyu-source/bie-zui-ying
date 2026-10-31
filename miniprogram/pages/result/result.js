@@ -1,5 +1,6 @@
 const api = require("../../utils/api");
-const { WS_BASE_URL } = require("../../utils/config");
+const { backToTapLobby } = require("../../utils/nav");
+const { openRoomSocket } = require("../../utils/roomSocket");
 const { ensureUser, saveUser } = require("../../utils/user");
 
 Page({
@@ -19,6 +20,7 @@ Page({
     presenceText: "兄弟状态确认中",
     rematchLoading: false,
     rematchButtonText: "邀兄弟再来一局",
+    socketReady: false,
     fameModalVisible: false,
     fameNickname: "",
     fameAvatarTemp: "",
@@ -26,7 +28,13 @@ Page({
   },
 
   async onLoad(query) {
-    const user = await ensureUser({ refresh: true });
+    let user;
+    try {
+      user = await ensureUser({ refresh: true });
+    } catch (error) {
+      // Stats refresh failed; the cached user is enough to show the result.
+      user = getApp().globalData.user || {};
+    }
     this.setData({ user, roomId: query.roomId || "" });
     this.connectResultSocket();
     const app = getApp();
@@ -42,12 +50,16 @@ Page({
     }
   },
 
+  onShow() {
+    if (this.socket) this.socket.reconnectNow();
+  },
+
   onUnload() {
     this.stopResultPolling();
     if (this.rematchTimer) clearTimeout(this.rematchTimer);
-    if (this.socketTask) {
-      this.socketTask.close({ code: 1000, reason: "leave result" });
-      this.socketTask = null;
+    if (this.socket) {
+      this.socket.close();
+      this.socket = null;
     }
   },
 
@@ -97,49 +109,34 @@ Page({
   connectResultSocket() {
     if (!this.data.roomId || !this.data.user.id) return;
 
-    const socketTask = wx.connectSocket({
-      url: `${WS_BASE_URL}/ws/rooms/${this.data.roomId}?userId=${this.data.user.id}`
-    });
-    this.socketTask = socketTask;
-
-    socketTask.onMessage((event) => {
-      try {
-        const message = JSON.parse(event.data);
+    this.socket = openRoomSocket({
+      roomId: this.data.roomId,
+      userId: this.data.user.id,
+      onStatus: (ready) => {
+        this.setData({ socketReady: ready });
+        if (ready) return;
+        // Our own line is down, so we can't tell whether the opponent left.
+        this.clearRematchWaiting();
+        this.setData({
+          opponentOnline: false,
+          presenceText: "连线断了，正在重连",
+          rematchButtonText: "连线中…"
+        });
+      },
+      onMessage: (message) => {
         if (message.type === "room:update" && message.room) {
           this.updatePresence(message.room, message.onlineUserIds);
-          return;
-        }
-
-        if (message.type === "room:connected") {
+        } else if (message.type === "room:connected") {
           this.updatePresence(this.data.room, message.onlineUserIds);
-          return;
-        }
-
-        if (message.type === "rematch:invite" && message.fromUserId !== this.data.user.id) {
+        } else if (message.type === "rematch:invite" && message.fromUserId !== this.data.user.id) {
           this.showRematchInvite(message.fromUserId);
-          return;
-        }
-
-        if (message.type === "rematch:decline" && message.fromUserId !== this.data.user.id) {
+        } else if (message.type === "rematch:decline" && message.fromUserId !== this.data.user.id) {
           this.clearRematchWaiting();
           wx.showToast({ title: "兄弟说先缓缓", icon: "none" });
-          return;
-        }
-
-        if (message.type === "rematch:start" && message.room && message.room.id) {
+        } else if (message.type === "rematch:start" && message.room && message.room.id) {
           this.enterRematch(message.room.id);
         }
-      } catch (error) {
-        // Ignore malformed socket messages.
       }
-    });
-
-    socketTask.onClose(() => {
-      this.setData({
-        opponentOnline: false,
-        presenceText: "兄弟已离桌",
-        rematchButtonText: "兄弟不在，先回首页"
-      });
     });
   },
 
@@ -165,11 +162,15 @@ Page({
 
   requestRematch() {
     if (this.data.rematchLoading || this.data.waitingResult) return;
+    if (!this.data.socketReady) {
+      wx.showToast({ title: "连线还没接上", icon: "none" });
+      return;
+    }
     if (!this.data.opponentOnline) {
       wx.showToast({ title: "兄弟已经离桌", icon: "none" });
       return;
     }
-    if (!this.socketTask) {
+    if (!this.socket.send({ type: "rematch:invite" })) {
       wx.showToast({ title: "连线还没接上", icon: "none" });
       return;
     }
@@ -177,9 +178,6 @@ Page({
     this.setData({
       rematchLoading: true,
       rematchButtonText: "已发邀约，等他嘴硬"
-    });
-    this.socketTask.send({
-      data: JSON.stringify({ type: "rematch:invite" })
     });
     this.rematchTimer = setTimeout(() => {
       this.clearRematchWaiting();
@@ -191,6 +189,7 @@ Page({
       clearTimeout(this.rematchTimer);
       this.rematchTimer = null;
     }
+    if (!this.data.rematchLoading) return;
     this.setData({
       rematchLoading: false,
       rematchButtonText: this.data.opponentOnline ? "邀兄弟再来一局" : "兄弟不在，先回首页"
@@ -213,10 +212,8 @@ Page({
         this.rematchInviteOpen = false;
         if (res.confirm) {
           await this.acceptRematch();
-        } else if (this.socketTask) {
-          this.socketTask.send({
-            data: JSON.stringify({ type: "rematch:decline" })
-          });
+        } else if (this.socket) {
+          this.socket.send({ type: "rematch:decline" });
         }
       },
       fail: () => {
@@ -289,11 +286,7 @@ Page({
   },
 
   goHome() {
-    // Rebuild the stack as hub -> game lobby so "back" from the lobby reaches the hub.
-    wx.reLaunch({
-      url: "/pages/hub/hub",
-      success: () => wx.navigateTo({ url: "/pages/home/home" })
-    });
+    backToTapLobby();
   },
 
   openFameModal() {
