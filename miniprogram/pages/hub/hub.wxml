@@ -1,0 +1,41 @@
+<view class="page hub">
+  <view class="version-badge">v{{appVersion}}</view>
+  <view class="brand">别嘴硬</view>
+  <view class="subtitle">选个项目，重新定义兄弟地位。</view>
+
+  <view class="status comic-panel">
+    <view class="status-main">
+      <view class="nickname">{{user.nickname || '正在加载...'}}</view>
+      <view class="tag">{{user.title || '神秘手指'}}</view>
+    </view>
+    <view class="stats">胜 {{user.wins || 0}} · 负 {{user.losses || 0}}</view>
+  </view>
+
+  <view class="taunt">{{taunt}}</view>
+
+  <view class="section-title">今天比什么</view>
+
+  <view class="game-list">
+    <view
+      wx:for="{{games}}"
+      wx:key="id"
+      class="game-card comic-panel {{item.playable ? '' : 'locked'}}"
+      hover-class="{{item.playable ? 'game-card-pressed' : 'none'}}"
+      data-id="{{item.id}}"
+      bindtap="openGame"
+    >
+      <view class="game-glyph" style="background: {{item.accent}};">{{item.glyph}}</view>
+      <view class="game-body">
+        <view class="game-head">
+          <view class="game-name">{{item.name}}</view>
+          <view wx:if="{{!item.playable}}" class="soon-badge">敬请期待</view>
+        </view>
+        <view class="game-tagline">{{item.tagline}}</view>
+        <view class="game-tags">
+          <view wx:for="{{item.tags}}" wx:for-item="tag" wx:key="*this" class="game-tag">{{tag}}</view>
+        </view>
+      </view>
+      <view wx:if="{{item.playable}}" class="game-go">开打</view>
+    </view>
+  </view>
+</view>

@@ -1,5 +1,6 @@
 {
   "pages": [
+    "pages/hub/hub",
     "pages/home/home",
     "pages/room/room",
     "pages/battle/battle",

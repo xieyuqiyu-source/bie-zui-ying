@@ -280,7 +280,7 @@ Page({
   onShareAppMessage() {
     return {
       title: `${this.data.headline}：${this.data.trashTalk}`,
-      path: "/pages/home/home"
+      path: "/pages/hub/hub"
     };
   },
 
@@ -289,7 +289,11 @@ Page({
   },
 
   goHome() {
-    wx.reLaunch({ url: "/pages/home/home" });
+    // Rebuild the stack as hub -> game lobby so "back" from the lobby reaches the hub.
+    wx.reLaunch({
+      url: "/pages/hub/hub",
+      success: () => wx.navigateTo({ url: "/pages/home/home" })
+    });
   },
 
   openFameModal() {

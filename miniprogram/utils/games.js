@@ -1,0 +1,41 @@
+// Every game shown on the hub. To add a game, append an entry and point
+// `entry` at its lobby page; games without an entry show as "coming soon".
+const GAMES = [
+  {
+    id: "tap",
+    name: "十秒手速",
+    glyph: "点",
+    accent: "#e33124",
+    tagline: "10 秒疯狂点屏幕，手速说了算。",
+    tags: ["双人实时", "10 秒"],
+    entry: "/pages/home/home"
+  },
+  {
+    id: "reaction",
+    name: "反应对决",
+    glyph: "快",
+    accent: "#2f6fed",
+    tagline: "变色那一刻拍下去，早拍算输。",
+    tags: ["双人", "比反应"]
+  },
+  {
+    id: "rps",
+    name: "猜拳心理战",
+    glyph: "拳",
+    accent: "#2fb36b",
+    tagline: "三局两胜，看谁先被看穿。",
+    tags: ["双人", "三局两胜"]
+  },
+  {
+    id: "bond",
+    name: "兄弟默契",
+    glyph: "懂",
+    accent: "#8b4fd8",
+    tagline: "同一道题，答得一样才算懂你。",
+    tags: ["双人", "默契"]
+  }
+];
+
+module.exports = {
+  GAMES
+};

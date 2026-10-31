@@ -1,0 +1,203 @@
+.hub {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 30rpx;
+  padding-top: 58rpx;
+  padding-bottom: 60rpx;
+}
+
+.version-badge {
+  position: absolute;
+  top: 22rpx;
+  right: 28rpx;
+  max-width: 180rpx;
+  padding: 6rpx 14rpx;
+  border: 4rpx solid #111;
+  border-radius: 999rpx;
+  box-sizing: border-box;
+  background: #fff;
+  font-size: 22rpx;
+  font-weight: 900;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status {
+  padding: 24rpx 28rpx;
+}
+
+.status-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16rpx;
+  min-width: 0;
+}
+
+.nickname {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: 40rpx;
+  font-weight: 900;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.status-main .tag {
+  flex: 0 0 auto;
+}
+
+.stats {
+  margin-top: 10rpx;
+  font-size: 28rpx;
+  font-weight: 700;
+}
+
+.taunt {
+  padding: 24rpx 28rpx;
+  border-left: 10rpx solid #111;
+  background: rgba(255, 255, 255, 0.56);
+  font-size: 34rpx;
+  font-weight: 900;
+  line-height: 1.35;
+}
+
+.section-title {
+  margin-top: 6rpx;
+  font-size: 40rpx;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.game-list {
+  display: flex;
+  flex-direction: column;
+  gap: 30rpx;
+}
+
+.game-card {
+  display: flex;
+  align-items: center;
+  gap: 24rpx;
+  min-width: 0;
+  padding: 24rpx;
+  box-sizing: border-box;
+  transition: transform 0.08s, box-shadow 0.08s;
+}
+
+.game-card-pressed {
+  transform: translate(6rpx, 6rpx);
+  box-shadow: 4rpx 4rpx 0 #111;
+}
+
+.game-card.locked {
+  background: #f1ecd8;
+  box-shadow: 10rpx 10rpx 0 rgba(17, 17, 17, 0.35);
+}
+
+.game-glyph {
+  flex: 0 0 116rpx;
+  width: 116rpx;
+  height: 116rpx;
+  border: 6rpx solid #111;
+  border-radius: 8rpx;
+  box-sizing: border-box;
+  box-shadow: 6rpx 6rpx 0 #111;
+  color: #fff;
+  font-size: 64rpx;
+  font-weight: 900;
+  line-height: 104rpx;
+  text-align: center;
+  transform: rotate(-4deg);
+}
+
+.locked .game-glyph {
+  opacity: 0.55;
+  box-shadow: none;
+  transform: none;
+}
+
+.game-body {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.game-head {
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+  min-width: 0;
+}
+
+.game-name {
+  min-width: 0;
+  font-size: 38rpx;
+  font-weight: 900;
+  line-height: 1.2;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.soon-badge {
+  flex: 0 0 auto;
+  padding: 4rpx 12rpx;
+  border: 4rpx solid #111;
+  border-radius: 999rpx;
+  background: #111;
+  color: #f7d84a;
+  font-size: 20rpx;
+  font-weight: 900;
+}
+
+.game-tagline {
+  margin-top: 10rpx;
+  font-size: 26rpx;
+  font-weight: 800;
+  line-height: 1.35;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+}
+
+.locked .game-name,
+.locked .game-tagline {
+  color: #555;
+}
+
+.game-tags {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10rpx;
+  margin-top: 14rpx;
+}
+
+.game-tag {
+  padding: 4rpx 14rpx;
+  border: 4rpx solid #111;
+  border-radius: 999rpx;
+  background: #f7d84a;
+  font-size: 22rpx;
+  font-weight: 900;
+}
+
+.locked .game-tag {
+  background: #fff;
+  color: #555;
+}
+
+.game-go {
+  flex: 0 0 auto;
+  padding: 14rpx 18rpx;
+  border: 5rpx solid #111;
+  border-radius: 8rpx;
+  background: #e33124;
+  color: #fff;
+  font-size: 28rpx;
+  font-weight: 900;
+  box-shadow: 5rpx 5rpx 0 #111;
+}
