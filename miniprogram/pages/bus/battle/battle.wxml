@@ -18,8 +18,11 @@
       <view class="tag">我是{{roleName}}</view>
       <view class="live {{bothOnline ? 'is-online' : ''}}"><view class="live-dot"></view>{{liveText}} · {{opponentName}}</view>
     </view>
+    <view class="hint {{kneeling ? 'is-bad' : ''}}">{{footHint}}</view>
   </view>
 
+  <!-- Nothing is layered over the canvas: overlays on a 2d canvas don't show reliably,
+       so the countdown and end banner are drawn inside it (see scene.js). -->
   <canvas
     id="scene"
     type="2d"
@@ -30,8 +33,6 @@
     bindtouchcancel="releaseWheel"
   ></canvas>
 
-  <view class="hint {{kneeling ? 'is-bad' : ''}}">{{footHint}}</view>
-
   <view wx:if="{{role === 'runner'}}" class="feet">
     <view class="foot {{nextFoot === 'left' && !kneeling ? 'is-next' : ''}}" data-foot="left" catchtouchstart="tapFoot">
       <view class="foot-sole"></view>
@@ -41,17 +42,5 @@
       <view class="foot-sole"></view>
       <view class="foot-label">右脚</view>
     </view>
-  </view>
-
-  <view wx:if="{{phase === 'countdown'}}" class="overlay">
-    <view class="countdown">{{countdownText}}</view>
-    <view class="overlay-copy">{{role === 'bus' ? '准备踩油门' : '准备起跑'}}</view>
-  </view>
-  <view wx:if="{{phase === 'loading'}}" class="overlay">
-    <view class="overlay-copy">车还在进站…</view>
-  </view>
-  <view wx:if="{{phase === 'finished'}}" class="overlay">
-    <view class="countdown small">{{banner}}</view>
-    <view class="overlay-copy">正在出战报</view>
   </view>
 </view>

@@ -7,8 +7,9 @@ const { drawFrame } = require("./scene");
 
 const POS_SEND_MS = 100;
 const HUD_MS = 100;
-// Fraction of the canvas height used by the street; the rest holds the controls.
-const SCENE_RATIO = 0.6;
+// Fraction of the canvas used by the street. The driver's wheel is drawn below it; the
+// runner's foot buttons sit under the canvas, so the runner gets the whole canvas.
+const BUS_SCENE_RATIO = 0.48;
 
 function clamp(value, min, max) {
   return Math.max(min, Math.min(max, value));
@@ -38,7 +39,6 @@ Page({
     role: "",
     roleName: "",
     phase: "loading",
-    countdownText: "",
     timeLeftText: "15.0",
     gapText: "12.0",
     footHint: "",
@@ -46,8 +46,7 @@ Page({
     kneeling: false,
     opponentName: "对手",
     liveText: "连线中",
-    bothOnline: false,
-    banner: ""
+    bothOnline: false
   },
 
   async onLoad(query) {
@@ -69,6 +68,18 @@ Page({
     }
 
     const room = result.room;
+    // An old backend ignores gameId and hands back a tap room with no roles. Say so instead
+    // of quietly playing it as a runner against a bus that never moves.
+    if (room.gameId !== "bus" || !room.owner.role) {
+      wx.showModal({
+        title: "车没对上",
+        content: "这不是追赶巴士的房间，可能连到了旧版后端。",
+        showCancel: false,
+        confirmText: "回大厅",
+        complete: () => backToLobby(rules.LOBBY_URL)
+      });
+      return;
+    }
     if (room.status === "waiting" || !room.playStartAt || !room.playEndsAt) {
       wx.redirectTo({ url: `/pages/bus/room/room?roomId=${room.id}` });
       return;
@@ -107,7 +118,7 @@ Page({
       role: this.role,
       roleName: rules.ROLE_NAMES[this.role],
       opponentName: opponentUser && opponentUser.nickname || "对手",
-      footHint: this.role === "runner" ? "先迈左脚" : "绕着方向盘画圈"
+      footHint: this.role === "runner" ? "左右脚交替点，先迈左脚" : "手指绕着方向盘画圈"
     });
 
     // A finished room (e.g. reopened from history) goes straight to the result.
@@ -148,10 +159,12 @@ Page({
           this.opponentD = Math.max(this.opponentD, Number(message.d) || 0);
         } else if (message.type === "room:update" && message.room) {
           this.updateOnline(message.onlineUserIds);
-          // Only a catch ends a match early, so if the other side has already handed in its
+          // Only a catch ends a match early, so if a real opponent has already handed in its
           // run, it saw the catch first (its view of us lags ~100 ms). Stop and hand in ours.
+          // A bot's run is in the room from the start, so this doesn't apply to bot rooms.
           const opponent = message.room.owner.userId === this.opponentId ? message.room.owner : message.room.guest;
-          if (message.room.status === "finished" || (opponent && opponent.score !== undefined)) {
+          const opponentDone = !this.opponentTrace && opponent && opponent.score !== undefined;
+          if (message.room.status === "finished" || opponentDone) {
             if (Date.now() < this.playEnd) this.boarded = true;
             this.finish();
           }
@@ -189,10 +202,9 @@ Page({
         this.ctx = ctx;
         this.canvasW = info.width;
         this.canvasH = info.height;
-        this.canvasTop = info.top || 0;
-        this.canvasLeft = info.left || 0;
-        const controlTop = info.height * SCENE_RATIO;
-        const r = Math.min(info.width * 0.3, (info.height - controlTop) * 0.36);
+        this.sceneRatio = this.role === "bus" ? BUS_SCENE_RATIO : 1;
+        const controlTop = info.height * this.sceneRatio;
+        const r = Math.min(info.width * 0.32, (info.height - controlTop) * 0.38);
         this.wheel = { cx: info.width / 2, cy: controlTop + (info.height - controlTop) / 2, r };
         const loop = () => {
           if (this.left) return;
@@ -209,12 +221,9 @@ Page({
     this.lastFrameAt = now;
 
     if (now < this.playStart) {
-      const left = Math.max(1, Math.ceil((this.playStart - now) / 1000));
-      if (this.data.phase !== "countdown" || this.data.countdownText !== `${left}`) {
-        this.setData({ phase: "countdown", countdownText: `${left}` });
-      }
+      if (this.data.phase !== "countdown") this.setData({ phase: "countdown" });
     } else if (!this.finished) {
-      if (this.data.phase !== "playing") this.setData({ phase: "playing", countdownText: "" });
+      if (this.data.phase !== "playing") this.setData({ phase: "playing" });
       if (this.role === "bus") this.updateBus(now, dt);
       this.recordSamples(now);
       this.sendPosition(now);
@@ -242,7 +251,8 @@ Page({
       {
         busD,
         runnerD,
-        sceneRatio: SCENE_RATIO,
+        sceneRatio: this.sceneRatio,
+        banner: this.bannerFor(now),
         kneeling: this.role === "runner" ? now < this.kneelUntil : false,
         stepCount: this.role === "runner" ? this.stepCount : Math.floor(runnerD / rules.STEP_METRES),
         boarded: this.boarded,
@@ -367,8 +377,8 @@ Page({
     this.busSpeed = clamp(this.busSpeed, rules.BUS_MIN_SPEED, rules.BUS_MAX_SPEED);
     this.myD += this.busSpeed * dt;
 
-    const hint = effort > 0.7 ? "稳！车飞起来了" : effort > 0.3 ? "再快点，画圆！" : "绕着方向盘画圈";
-    if (hint !== this.data.footHint) this.setData({ footHint: hint });
+    const hint = effort > 0.7 ? "稳！车飞起来了" : effort > 0.3 ? "再快点，画圆！" : "手指绕着方向盘画圈";
+    if (hint !== this.data.footHint && !this.finished) this.setData({ footHint: hint });
   },
 
   // --- end ---
@@ -387,12 +397,10 @@ Page({
       this.trace.push(Math.round((this.myD + ahead) * 10) / 10);
     }
     this.sendPosition(now, true);
-    this.setData({
-      phase: "finished",
-      banner: this.boarded
-        ? (this.role === "runner" ? "挤上车了！" : "被追上了…")
-        : now >= this.playEnd ? "车门关了" : "这趟结束了"
-    });
+    this.endBanner = this.boarded
+      ? (this.role === "runner" ? "挤上车了！" : "被追上了…")
+      : now >= this.playEnd ? "车门关了" : "这趟结束了";
+    this.setData({ phase: "finished", footHint: "正在出战报" });
 
     let result = null;
     try {
@@ -402,6 +410,18 @@ Page({
     }
     getApp().globalData.lastResult = result;
     this.redirectTimer = setTimeout(() => this.goResult(), 1200);
+  },
+
+  // Big text drawn over the street: countdown before the start, verdict at the end.
+  bannerFor(now) {
+    if (this.endBanner) return { title: this.endBanner, sub: "正在出战报" };
+    if (now < this.playStart) {
+      return {
+        title: `${Math.max(1, Math.ceil((this.playStart - now) / 1000))}`,
+        sub: this.role === "bus" ? "准备踩油门" : "准备起跑"
+      };
+    }
+    return null;
   },
 
   currentSpeed(now) {

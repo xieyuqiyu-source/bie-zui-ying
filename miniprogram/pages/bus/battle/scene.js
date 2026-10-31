@@ -243,6 +243,39 @@ function drawSteeringWheel(ctx, wheel, line, angle) {
   fillStroke(ctx, BUS_YELLOW, line * 1.2);
 }
 
+function drawBanner(ctx, view, line, banner) {
+  const { w, sceneH } = view;
+  const cx = w / 2;
+  const cy = sceneH * 0.36;
+  const big = Math.min(w * 0.2, sceneH * 0.3);
+  ctx.font = `900 ${big}px sans-serif`;
+  const titleW = Math.max(ctx.measureText(banner.title).width + big * 0.8, big * 1.6);
+  const titleH = big * 1.3;
+  roundRect(ctx, cx - titleW / 2 + line * 3, cy - titleH / 2 + line * 3, titleW, titleH, line * 2);
+  ctx.fillStyle = INK;
+  ctx.fill();
+  roundRect(ctx, cx - titleW / 2, cy - titleH / 2, titleW, titleH, line * 2);
+  fillStroke(ctx, "#f7d84a", line * 2);
+  ctx.fillStyle = INK;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillText(banner.title, cx, cy + big * 0.05);
+
+  if (banner.sub) {
+    const small = big * 0.3;
+    ctx.font = `900 ${small}px sans-serif`;
+    const subW = ctx.measureText(banner.sub).width + small * 1.4;
+    const subH = small * 1.8;
+    const subY = cy + titleH / 2 + small * 1.4;
+    roundRect(ctx, cx - subW / 2, subY - subH / 2, subW, subH, line * 1.5);
+    fillStroke(ctx, "#fff", line * 1.5);
+    ctx.fillStyle = INK;
+    ctx.fillText(banner.sub, cx, subY);
+  }
+  ctx.textAlign = "start";
+  ctx.textBaseline = "alphabetic";
+}
+
 // Camera: keep the runner near the left edge and zoom out as the bus pulls away.
 function computeView(w, h, state, previous) {
   const gap = START_GAP + state.busD - state.runnerD;
@@ -284,16 +317,19 @@ function drawFrame(ctx, w, h, state, previousView) {
   drawBus(ctx, view, line, rearX, state.boarded || gap < 2.5);
   drawRunner(ctx, view, line, RUNNER_SCREEN_METRES * view.ppm, state);
 
-  // Control area under the scene.
-  ctx.fillStyle = SIDEWALK;
-  ctx.fillRect(0, view.sceneH, w, h - view.sceneH);
-  ctx.lineWidth = line * 1.5;
-  ctx.strokeStyle = INK;
-  ctx.beginPath();
-  ctx.moveTo(0, view.sceneH);
-  ctx.lineTo(w, view.sceneH);
-  ctx.stroke();
+  // Control area under the scene (driver only).
+  if (view.sceneH < h) {
+    ctx.fillStyle = "#fff3c4";
+    ctx.fillRect(0, view.sceneH, w, h - view.sceneH);
+    ctx.lineWidth = line * 1.5;
+    ctx.strokeStyle = INK;
+    ctx.beginPath();
+    ctx.moveTo(0, view.sceneH);
+    ctx.lineTo(w, view.sceneH);
+    ctx.stroke();
+  }
   if (state.wheel) drawSteeringWheel(ctx, state.wheel, line, state.wheelAngle);
+  if (state.banner) drawBanner(ctx, view, line, state.banner);
 
   return view;
 }
