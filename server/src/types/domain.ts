@@ -26,7 +26,11 @@ export interface User {
 export interface RoomPlayer {
   userId: string;
   ready: boolean;
+  // Asymmetric games only, e.g. "bus" / "runner".
+  role?: string;
   score?: number;
+  // Per-game submission data, e.g. sampled distances for bus.
+  trace?: number[];
   submittedAt?: string;
 }
 
@@ -46,6 +50,8 @@ export interface Room {
   expiresAt: string;
   endedAt?: string;
   rematchRoomId?: string;
+  // Game-specific result numbers (see Judgement.detail), set when the match settles.
+  resultDetail?: Record<string, number>;
 }
 
 export interface Match {

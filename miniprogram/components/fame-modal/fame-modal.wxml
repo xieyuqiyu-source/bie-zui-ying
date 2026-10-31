@@ -1,0 +1,17 @@
+<view wx:if="{{visible}}" class="fame-mask">
+  <view class="fame-panel comic-panel">
+    <view class="fame-title">{{user.profileAuthorized ? '更新你的赫赫威名' : promptTitle}}</view>
+    <view class="fame-copy">{{user.profileAuthorized ? '你已经留名了，之后战绩会继续累计到这个身份。' : '授权后会出现在排行榜。不授权也能继续嘴硬。'}}</view>
+    <view class="fame-profile-row">
+      <view class="avatar-shell">
+        <button class="avatar-picker" open-type="chooseAvatar" bindchooseavatar="chooseAvatar">
+          <image wx:if="{{avatarTemp || user.avatarUrl}}" class="avatar-preview" src="{{avatarTemp || user.avatarUrl}}" mode="aspectFill"></image>
+          <view wx:else class="avatar-face">图</view>
+        </button>
+      </view>
+      <input class="fame-input" type="nickname" maxlength="32" value="{{nickname}}" placeholder="输入你的响亮名号" bindinput="inputNickname" />
+    </view>
+    <button class="primary-button" loading="{{saving}}" bindtap="save">{{user.profileAuthorized ? '更新赫赫威名' : '留下赫赫威名'}}</button>
+    <button class="secondary-button" bindtap="close">匿名也很帅</button>
+  </view>
+</view>

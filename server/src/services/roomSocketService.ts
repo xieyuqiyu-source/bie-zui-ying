@@ -40,7 +40,7 @@ export const roomSocketService = {
 
     socket.on("message", (raw: { toString(): string }) => {
       try {
-        const message = JSON.parse(raw.toString()) as { type?: string; score?: number };
+        const message = JSON.parse(raw.toString()) as { type?: string; score?: number; d?: number };
 
         if (message.type === "rematch:invite") {
           broadcastRaw(roomId, {
@@ -57,6 +57,13 @@ export const roomSocketService = {
             fromUserId: userId,
             sentAt: Date.now()
           });
+          return;
+        }
+
+        // 追赶巴士: live distance for drawing the other player. Display only, like battle:score.
+        if (message.type === "bus:pos") {
+          const d = Math.max(0, Math.min(Math.round((Number(message.d) || 0) * 10) / 10, 100));
+          broadcastRaw(roomId, { type: "bus:pos", userId, d, sentAt: Date.now() });
           return;
         }
 

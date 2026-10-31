@@ -3,8 +3,8 @@ import type { RowDataPacket } from "mysql2";
 import { db } from "../data/mysql.js";
 import { redis } from "../data/redis.js";
 import { DEFAULT_GAME_ID, getGame } from "../games/index.js";
-import type { GameDefinition, RankingType } from "../games/types.js";
-import type { Match, Room, User } from "../types/domain.js";
+import type { GameDefinition, RankingType, RawSubmission, Submission } from "../games/types.js";
+import type { Match, Room, RoomPlayer, User } from "../types/domain.js";
 import { addMinutesIso, nowIso } from "../utils/time.js";
 import { gameStatsService } from "./gameStatsService.js";
 import { titleService } from "./titleService.js";
@@ -122,6 +122,30 @@ function roomGame(room: Room) {
   return getGame(room.gameId ?? DEFAULT_GAME_ID);
 }
 
+function submissionOf(player: RoomPlayer | undefined): Submission | undefined {
+  if (!player || player.score === undefined) return undefined;
+  return { score: player.score, trace: player.trace };
+}
+
+function applySubmission(player: RoomPlayer, submission: Submission) {
+  player.score = submission.score;
+  if (submission.trace) player.trace = submission.trace;
+  player.submittedAt = nowIso();
+}
+
+// The owner's pick for asymmetric games; the guest always gets the other role.
+function ownerRole(game: GameDefinition, requested?: string) {
+  if (!game.roles) return undefined;
+  if (requested === undefined) return game.roles[0];
+  if (!game.roles.includes(requested)) throw new Error("ROLE_NOT_SUPPORTED");
+  return requested;
+}
+
+function otherRole(game: GameDefinition, role?: string) {
+  if (!game.roles) return undefined;
+  return game.roles[0] === role ? game.roles[1] : game.roles[0];
+}
+
 function playWindow(game: GameDefinition) {
   const playStartAt = new Date(Date.now() + COUNTDOWN_MS).toISOString();
   const playEndsAt = new Date(Date.now() + COUNTDOWN_MS + game.durationSeconds * 1000).toISOString();
@@ -161,14 +185,18 @@ async function settleMatch(room: Room, owner: User, guest: User) {
   const guestPlayer = room.guest!;
   const ownerAbsent = room.owner.score === undefined;
   const guestAbsent = guestPlayer.score === undefined;
-  const ownerScore = room.owner.score ?? game.absentScore;
-  const guestScore = guestPlayer.score ?? game.absentScore;
+  const roles = { owner: room.owner.role, guest: guestPlayer.role };
 
-  const diff = game.compare(ownerScore, guestScore);
-  const ownerWon = diff > 0;
-  const guestWon = diff < 0;
+  const judgement = game.judge(submissionOf(room.owner), submissionOf(guestPlayer), roles);
+  const { ownerScore, guestScore } = judgement;
+  const ownerWon = judgement.winner === "owner";
+  const guestWon = judgement.winner === "guest";
   const winnerId = ownerWon ? owner.id : guestWon ? guest.id : undefined;
-  const trashTalk = winnerId ? trashTalkService.win() : trashTalkService.draw();
+  const trashTalk = game.trashTalk
+    ? game.trashTalk(judgement, roles)
+    : winnerId
+      ? trashTalkService.win()
+      : trashTalkService.draw();
 
   const match: Match = {
     id: room.matchId!,
@@ -187,6 +215,7 @@ async function settleMatch(room: Room, owner: User, guest: User) {
 
   room.owner.score = ownerScore;
   guestPlayer.score = guestScore;
+  room.resultDetail = judgement.detail;
   room.status = "finished";
   room.endedAt = nowIso();
 
@@ -244,12 +273,10 @@ async function loadPlayers(room: Room) {
 function fillBotScores(room: Room, owner: User, guest: User) {
   const game = roomGame(room);
   if (guest.kind === "bot" && room.guest!.score === undefined) {
-    room.guest!.score = game.botScore();
-    room.guest!.submittedAt = nowIso();
+    applySubmission(room.guest!, game.botSubmission(room.guest!.role));
   }
   if (owner.kind === "bot" && room.owner.score === undefined) {
-    room.owner.score = game.botScore();
-    room.owner.submittedAt = nowIso();
+    applySubmission(room.owner, game.botSubmission(room.owner.role));
   }
 }
 
@@ -263,14 +290,14 @@ async function settleIfOverdue(room: Room) {
 }
 
 export const roomService = {
-  async createRoom(owner: User, gameId: string = DEFAULT_GAME_ID) {
+  async createRoom(owner: User, gameId: string = DEFAULT_GAME_ID, role?: string) {
     const game = getGame(gameId);
     const room: Room = {
       id: nanoid(16),
       gameId: game.id,
       code: nanoid(8),
       status: "waiting",
-      owner: { userId: owner.id, ready: false },
+      owner: { userId: owner.id, ready: false, role: ownerRole(game, role) },
       createdAt: nowIso(),
       expiresAt: addMinutesIso(10)
     };
@@ -278,16 +305,17 @@ export const roomService = {
     return serializeRoom(room);
   },
 
-  async createBotRoom(owner: User, bot: User, gameId: string = DEFAULT_GAME_ID) {
+  async createBotRoom(owner: User, bot: User, gameId: string = DEFAULT_GAME_ID, role?: string) {
     const game = getGame(gameId);
     const { playStartAt, playEndsAt } = playWindow(game);
+    const playerRole = ownerRole(game, role);
     const room: Room = {
       id: nanoid(16),
       gameId: game.id,
       code: nanoid(8),
       status: "countdown",
-      owner: { userId: owner.id, ready: true },
-      guest: { userId: bot.id, ready: true },
+      owner: { userId: owner.id, ready: true, role: playerRole },
+      guest: { userId: bot.id, ready: true, role: otherRole(game, playerRole) },
       matchId: nanoid(16),
       countdownStartAt: nowIso(),
       playStartAt,
@@ -295,6 +323,9 @@ export const roomService = {
       createdAt: nowIso(),
       expiresAt: addMinutesIso(10)
     };
+    // Games with a live view of the opponent (bus) need the bot's run up front to animate it.
+    // Bot matches are unranked, so revealing it early costs nothing.
+    if (game.roles) fillBotScores(room, owner, bot);
     await saveRoom(room);
     return serializeRoom(room);
   },
@@ -325,8 +356,9 @@ export const roomService = {
       gameId: game.id,
       code: nanoid(8),
       status: "countdown",
-      owner: { userId: oldRoom.owner.userId, ready: true },
-      guest: { userId: oldRoom.guest.userId, ready: true },
+      // Same roles as last time; to swap, start a new room from the lobby.
+      owner: { userId: oldRoom.owner.userId, ready: true, role: oldRoom.owner.role },
+      guest: { userId: oldRoom.guest.userId, ready: true, role: oldRoom.guest.role },
       matchId: nanoid(16),
       countdownStartAt: nowIso(),
       playStartAt,
@@ -365,7 +397,7 @@ export const roomService = {
     if (room.status !== "waiting") throw new Error("ROOM_NOT_JOINABLE");
     if (room.owner.userId === guest.id) return serializeRoom(room);
     if (room.guest && room.guest.userId !== guest.id) throw new Error("ROOM_FULL");
-    room.guest = { userId: guest.id, ready: false };
+    room.guest = { userId: guest.id, ready: false, role: otherRole(roomGame(room), room.owner.role) };
     await saveRoom(room);
     return serializeRoom(room);
     });
@@ -398,7 +430,7 @@ export const roomService = {
     });
   },
 
-  async submitScore(roomId: string, userId: string, score: number) {
+  async submitScore(roomId: string, userId: string, raw: RawSubmission) {
     return withRoomLock(roomId, async () => {
     const room = await loadRoom(roomId);
     if (!room) throw new Error("ROOM_NOT_FOUND");
@@ -410,15 +442,10 @@ export const roomService = {
       return { room: await serializeRoom(room), match: await findMatchByRoom(room.id) };
     }
 
-    const normalizedScore = roomGame(room).normalizeScore(score);
-
-    if (room.owner.userId === userId) {
-      room.owner.score = normalizedScore;
-      room.owner.submittedAt = nowIso();
-    }
-    if (room.guest.userId === userId) {
-      room.guest.score = normalizedScore;
-      room.guest.submittedAt = nowIso();
+    const player = room.owner.userId === userId ? room.owner : room.guest;
+    // First submission wins; a resend after a timeout must not overwrite it.
+    if (player.score === undefined) {
+      applySubmission(player, roomGame(room).normalizeSubmission(raw, player.role));
     }
 
     const { owner, guest } = await loadPlayers(room);

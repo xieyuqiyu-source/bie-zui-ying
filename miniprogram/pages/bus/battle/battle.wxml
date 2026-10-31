@@ -1,0 +1,57 @@
+<view class="bus-battle">
+  <view class="hud">
+    <view class="hud-panel">
+      <view class="hud-title">{{role === 'bus' ? '别让他上车' : '师傅，等等我'}}</view>
+      <view class="hud-row">
+        <view class="hud-cell">
+          <view class="hud-num">{{timeLeftText}} 秒</view>
+          <view class="hud-label">关门还有</view>
+        </view>
+        <view class="hud-divider"></view>
+        <view class="hud-cell">
+          <view class="hud-num">{{gapText}} 米</view>
+          <view class="hud-label">离车门</view>
+        </view>
+      </view>
+    </view>
+    <view class="hud-meta">
+      <view class="tag">我是{{roleName}}</view>
+      <view class="live {{bothOnline ? 'is-online' : ''}}"><view class="live-dot"></view>{{liveText}} · {{opponentName}}</view>
+    </view>
+  </view>
+
+  <canvas
+    id="scene"
+    type="2d"
+    class="scene"
+    bindtouchstart="touchWheel"
+    bindtouchmove="touchWheel"
+    bindtouchend="releaseWheel"
+    bindtouchcancel="releaseWheel"
+  ></canvas>
+
+  <view class="hint {{kneeling ? 'is-bad' : ''}}">{{footHint}}</view>
+
+  <view wx:if="{{role === 'runner'}}" class="feet">
+    <view class="foot {{nextFoot === 'left' && !kneeling ? 'is-next' : ''}}" data-foot="left" catchtouchstart="tapFoot">
+      <view class="foot-sole"></view>
+      <view class="foot-label">左脚</view>
+    </view>
+    <view class="foot {{nextFoot === 'right' && !kneeling ? 'is-next' : ''}}" data-foot="right" catchtouchstart="tapFoot">
+      <view class="foot-sole"></view>
+      <view class="foot-label">右脚</view>
+    </view>
+  </view>
+
+  <view wx:if="{{phase === 'countdown'}}" class="overlay">
+    <view class="countdown">{{countdownText}}</view>
+    <view class="overlay-copy">{{role === 'bus' ? '准备踩油门' : '准备起跑'}}</view>
+  </view>
+  <view wx:if="{{phase === 'loading'}}" class="overlay">
+    <view class="overlay-copy">车还在进站…</view>
+  </view>
+  <view wx:if="{{phase === 'finished'}}" class="overlay">
+    <view class="countdown small">{{banner}}</view>
+    <view class="overlay-copy">正在出战报</view>
+  </view>
+</view>

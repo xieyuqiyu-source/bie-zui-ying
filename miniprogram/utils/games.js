@@ -11,6 +11,15 @@ const GAMES = [
     entry: "/pages/home/home"
   },
   {
+    id: "bus",
+    name: "追赶巴士",
+    glyph: "追",
+    accent: "#1f5a4a",
+    tagline: "一个疯狂转方向盘，一个左右脚狂奔，追上车门算你狠。",
+    tags: ["双人实时", "15 秒", "一开一追"],
+    entry: "/pages/bus/lobby/lobby"
+  },
+  {
     id: "reaction",
     name: "反应对决",
     glyph: "快",

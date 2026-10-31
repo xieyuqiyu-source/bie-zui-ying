@@ -1,0 +1,33 @@
+<view class="page bus-result">
+  <view class="brand small {{isWinner ? 'is-win' : ''}}">{{headline}}</view>
+  <view wx:if="{{verdictText}}" class="verdict">{{verdictText}}</view>
+  <view class="trash comic-panel">{{trashTalk}}</view>
+
+  <view class="score-card comic-panel">
+    <view class="line">
+      <view class="who"><text class="tag role-tag">{{ownerRole}}</text><text class="who-name">{{ownerName}}</text></view>
+      <text>{{ownerDistance}} 米</text>
+    </view>
+    <view class="line">
+      <view class="who"><text class="tag role-tag">{{guestRole}}</text><text class="who-name">{{guestName}}</text></view>
+      <text>{{guestDistance}} 米</text>
+    </view>
+  </view>
+
+  <view class="presence comic-panel">
+    <view class="presence-dot {{opponentOnline ? 'is-online' : ''}}"></view>
+    <view class="presence-copy">
+      <view class="presence-title">{{presenceText}}</view>
+      <view class="presence-sub">{{opponentOnline ? '现在可以直接邀他再跑一趟，角色不变' : '他走了，这局嘴硬先记账'}}</view>
+    </view>
+  </view>
+
+  <button class="primary-button" loading="{{rematchLoading}}" disabled="{{!opponentOnline || waitingResult}}" bindtap="requestRematch">
+    {{rematchButtonText}}
+  </button>
+  <button class="primary-button" bindtap="goRanking">看看谁最能跑</button>
+  <button class="secondary-button" bindtap="goHome">回大厅换个角色</button>
+  <button class="secondary-button" bindtap="openFameModal">{{user.profileAuthorized ? '更新威名' : '留下赫赫威名'}}</button>
+
+  <fame-modal visible="{{fameModalVisible}}" user="{{user}}" bindclose="closeFameModal" bindsaved="onFameSaved" />
+</view>

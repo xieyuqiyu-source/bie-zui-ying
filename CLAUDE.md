@@ -219,5 +219,5 @@ ssh aitools-server 'cd /opt/bie-zui-ying/server && npm ci && npm run build && sy
 
 **代码卫生**
 - `server/src/data/store.ts`、`trashTalkService.invite/lose` 未使用。
-- 留名弹窗在 `home` 和 `result` 各一份（WXML + JS + WXSS 全重复），加第三个之前抽成组件。
+- 留名弹窗已抽成 `components/fame-modal`（追赶巴士结果页在用），但 `home` 和 `result` 还是各自的旧副本，待换成组件。
 - `docs/` 里的「数据保存在内存」等描述已过时。

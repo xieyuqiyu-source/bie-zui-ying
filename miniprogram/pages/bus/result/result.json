@@ -1,0 +1,6 @@
+{
+  "navigationBarTitleText": "战报出炉",
+  "usingComponents": {
+    "fame-modal": "/components/fame-modal/fame-modal"
+  }
+}

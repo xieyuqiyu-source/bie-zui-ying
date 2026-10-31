@@ -1,0 +1,31 @@
+<view class="page bus-room">
+  <view class="brand small">候车站台</view>
+  <view class="subtitle">{{statusText}}</view>
+
+  <view class="players">
+    <view class="player comic-panel">
+      <view class="online-row">
+        <view class="online-dot {{ownerOnline ? 'on' : ''}}"></view>
+        <text>{{ownerOnline ? '在线' : '连接中'}}</text>
+      </view>
+      <view class="avatar">{{ownerInitial}}</view>
+      <view class="name">{{room.ownerUser.nickname || '房主'}}</view>
+      <view class="tag role-tag">{{ownerRole}}</view>
+      <view class="ready">{{room.owner.ready ? '已准备' : '还没准备'}}</view>
+    </view>
+    <view class="versus">VS</view>
+    <view class="player comic-panel">
+      <view class="online-row">
+        <view class="online-dot {{guestOnline ? 'on' : ''}}"></view>
+        <text>{{guestOnline ? '在线' : '等兄弟'}}</text>
+      </view>
+      <view class="avatar">{{guestInitial}}</view>
+      <view class="name">{{room.guestUser.nickname || '等待兄弟'}}</view>
+      <view class="tag role-tag">{{guestRole}}</view>
+      <view class="ready">{{room.guest && room.guest.ready ? '已准备' : '还没到站'}}</view>
+    </view>
+  </view>
+
+  <button class="primary-button" bindtap="ready" loading="{{loading}}">我准备好了</button>
+  <button class="secondary-button" open-type="share">叫兄弟上车</button>
+</view>

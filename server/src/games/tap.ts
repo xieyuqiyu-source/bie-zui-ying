@@ -6,17 +6,20 @@ export const tapGame: GameDefinition = {
   id: "tap",
   durationSeconds: 10,
   betterScore: "higher",
-  absentScore: 0,
-  normalizeScore(raw) {
-    return Math.max(0, Math.min(Math.floor(raw), MAX_REASONABLE_SCORE));
+  normalizeSubmission(raw) {
+    return { score: Math.max(0, Math.min(Math.floor(raw.score), MAX_REASONABLE_SCORE)) };
   },
-  compare(a, b) {
-    return a - b;
-  },
-  botScore() {
+  botSubmission() {
     const botBase = 58 + Math.floor(Math.random() * 42);
     const swing = Math.floor(Math.random() * 19) - 9;
-    return Math.max(30, Math.min(MAX_REASONABLE_SCORE, botBase + swing));
+    return { score: Math.max(30, Math.min(MAX_REASONABLE_SCORE, botBase + swing)) };
+  },
+  judge(owner, guest) {
+    // A missing score counts as 0.
+    const ownerScore = owner?.score ?? 0;
+    const guestScore = guest?.score ?? 0;
+    const winner = ownerScore > guestScore ? "owner" : guestScore > ownerScore ? "guest" : null;
+    return { ownerScore, guestScore, winner };
   },
   rankings: {
     wins: { column: "wins", direction: "DESC" },

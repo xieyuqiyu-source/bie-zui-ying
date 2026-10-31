@@ -100,17 +100,18 @@ module.exports = {
     });
   },
 
-  createRoom(userId) {
+  // options: { gameId, role } for games other than tap.
+  createRoom(userId, options = {}) {
     return request("/api/rooms", {
       method: "POST",
-      data: { userId }
+      data: { userId, ...options }
     });
   },
 
-  createBotRoom(userId) {
+  createBotRoom(userId, options = {}) {
     return request("/api/rooms/bot", {
       method: "POST",
-      data: { userId }
+      data: { userId, ...options }
     });
   },
 
@@ -132,10 +133,11 @@ module.exports = {
     });
   },
 
-  submitScore(roomId, userId, score) {
+  // trace: per-game samples, e.g. distances for bus.
+  submitScore(roomId, userId, score, trace) {
     return request(`/api/rooms/${roomId}/score`, {
       method: "POST",
-      data: { userId, score }
+      data: { userId, score, trace }
     });
   },
 
@@ -146,7 +148,7 @@ module.exports = {
     });
   },
 
-  rankings(type = "wins") {
-    return request(`/api/rankings?type=${type}`);
+  rankings(type = "wins", gameId = "tap") {
+    return request(`/api/rankings?gameId=${gameId}&type=${type}`);
   }
 };

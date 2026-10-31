@@ -6,7 +6,11 @@
     "pages/battle/battle",
     "pages/result/result",
     "pages/ranking/ranking",
-    "pages/profile/profile"
+    "pages/profile/profile",
+    "pages/bus/lobby/lobby",
+    "pages/bus/room/room",
+    "pages/bus/battle/battle",
+    "pages/bus/result/result"
   ],
   "window": {
     "navigationBarTitleText": "别嘴硬",

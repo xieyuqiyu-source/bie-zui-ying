@@ -1,0 +1,303 @@
+// Draws one frame of 追赶巴士 on a 2d canvas. Pure drawing: all game state comes in `state`.
+const { START_GAP } = require("../rules");
+
+const INK = "#111";
+const SKY = "#fff3c4";
+const BUS_YELLOW = "#f7c531";
+const BUS_GREEN = "#1f5a4a";
+const ROAD = "#4a4a4a";
+const SIDEWALK = "#e9dcc0";
+const BUS_LENGTH = 6;
+// Where the door sits, measured from the bus's rear.
+const DOOR_OFFSET = 0.9;
+const RUNNER_SCREEN_METRES = 1.6;
+
+function roundRect(ctx, x, y, w, h, r) {
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.arcTo(x + w, y, x + w, y + h, r);
+  ctx.arcTo(x + w, y + h, x, y + h, r);
+  ctx.arcTo(x, y + h, x, y, r);
+  ctx.arcTo(x, y, x + w, y, r);
+  ctx.closePath();
+}
+
+function fillStroke(ctx, fill, lineWidth) {
+  ctx.fillStyle = fill;
+  ctx.fill();
+  ctx.lineWidth = lineWidth;
+  ctx.strokeStyle = INK;
+  ctx.stroke();
+}
+
+// Deterministic pseudo-random in [0, 1) so buildings don't flicker between frames.
+function hash(n) {
+  const x = Math.sin(n * 127.1) * 43758.5453;
+  return x - Math.floor(x);
+}
+
+function drawBuildings(ctx, view, line) {
+  const { w, horizonY, ppm, cameraX } = view;
+  // Far layer scrolls at 40% speed.
+  const parallax = 0.4;
+  const blockMetres = 4.5;
+  const offset = cameraX * parallax;
+  const first = Math.floor(offset / blockMetres) - 1;
+  const last = first + Math.ceil(w / (blockMetres * ppm)) + 2;
+  for (let i = first; i <= last; i += 1) {
+    const x = (i * blockMetres - offset) * ppm;
+    const bw = blockMetres * ppm * 0.92;
+    const bh = (2.2 + hash(i) * 2.2) * ppm;
+    const fill = hash(i + 7) > 0.5 ? "#fff" : "#f2e6c8";
+    roundRect(ctx, x, horizonY - bh, bw, bh + line, line);
+    fillStroke(ctx, fill, line);
+    const win = ppm * 0.55;
+    for (let row = 0; row < Math.floor(bh / (win * 1.8)); row += 1) {
+      for (let col = 0; col < 3; col += 1) {
+        const wx = x + bw * (0.14 + col * 0.3);
+        const wy = horizonY - bh + win * 0.7 + row * win * 1.8;
+        roundRect(ctx, wx, wy, win, win, line * 0.5);
+        fillStroke(ctx, "#bfe3e8", line * 0.6);
+      }
+    }
+  }
+}
+
+function drawRoad(ctx, view, line) {
+  const { w, horizonY, roadY, curbY, groundBottom, ppm, cameraX } = view;
+  ctx.fillStyle = ROAD;
+  ctx.fillRect(0, horizonY, w, curbY - horizonY);
+  ctx.fillStyle = SIDEWALK;
+  ctx.fillRect(0, curbY, w, groundBottom - curbY);
+
+  ctx.lineWidth = line;
+  ctx.strokeStyle = INK;
+  ctx.beginPath();
+  ctx.moveTo(0, horizonY);
+  ctx.lineTo(w, horizonY);
+  ctx.moveTo(0, curbY);
+  ctx.lineTo(w, curbY);
+  ctx.stroke();
+
+  // Lane dashes and paving joints move with the ground, so they show speed.
+  const dash = 2;
+  const firstDash = Math.floor(cameraX / dash);
+  ctx.fillStyle = "#fff";
+  for (let i = firstDash; i <= firstDash + Math.ceil(w / (dash * ppm)) + 1; i += 1) {
+    const x = (i * dash - cameraX) * ppm;
+    ctx.fillRect(x, roadY - line * 3, dash * ppm * 0.5, line * 1.6);
+  }
+  ctx.strokeStyle = "rgba(17,17,17,0.25)";
+  ctx.lineWidth = line * 0.6;
+  for (let i = firstDash; i <= firstDash + Math.ceil(w / (dash * ppm)) + 1; i += 1) {
+    const x = (i * dash - cameraX) * ppm;
+    ctx.beginPath();
+    ctx.moveTo(x, curbY);
+    ctx.lineTo(x - ppm * 0.6, groundBottom);
+    ctx.stroke();
+  }
+}
+
+function drawWheel(ctx, cx, cy, r, line, spin) {
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  fillStroke(ctx, INK, line);
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.5, 0, Math.PI * 2);
+  fillStroke(ctx, "#ddd", line * 0.6);
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = line * 0.6;
+  ctx.beginPath();
+  ctx.moveTo(cx + Math.cos(spin) * r * 0.5, cy + Math.sin(spin) * r * 0.5);
+  ctx.lineTo(cx - Math.cos(spin) * r * 0.5, cy - Math.sin(spin) * r * 0.5);
+  ctx.stroke();
+}
+
+function drawBus(ctx, view, line, rearX, open) {
+  const { ppm, roadY } = view;
+  const len = BUS_LENGTH * ppm;
+  const height = 2.3 * ppm;
+  const top = roadY - height - ppm * 0.35;
+  const wheelR = ppm * 0.42;
+  const wheelSpin = (rearX / ppm) * 1.2;
+
+  roundRect(ctx, rearX, top, len, height, ppm * 0.25);
+  fillStroke(ctx, BUS_YELLOW, line * 1.4);
+  // White window band and green stripe.
+  roundRect(ctx, rearX + ppm * 0.2, top + ppm * 0.2, len - ppm * 0.4, height * 0.42, ppm * 0.12);
+  fillStroke(ctx, "#fff", line);
+  ctx.fillStyle = BUS_GREEN;
+  ctx.fillRect(rearX + line, top + height * 0.66, len - line * 2, ppm * 0.18);
+
+  // Window frames.
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = line * 0.8;
+  for (let i = 1; i < 5; i += 1) {
+    const x = rearX + ppm * 0.2 + ((len - ppm * 0.4) * i) / 5;
+    ctx.beginPath();
+    ctx.moveTo(x, top + ppm * 0.2);
+    ctx.lineTo(x, top + ppm * 0.2 + height * 0.42);
+    ctx.stroke();
+  }
+
+  // Door near the rear; it slides open while the runner is close.
+  const doorX = rearX + (DOOR_OFFSET - 0.45) * ppm;
+  const doorW = ppm * 0.9;
+  const doorTop = top + ppm * 0.25;
+  const doorH = height - ppm * 0.25;
+  roundRect(ctx, doorX, doorTop, doorW, doorH, ppm * 0.08);
+  fillStroke(ctx, open ? "#2b2b2b" : "#bfe3e8", line);
+  if (!open) {
+    ctx.beginPath();
+    ctx.moveTo(doorX + doorW / 2, doorTop);
+    ctx.lineTo(doorX + doorW / 2, doorTop + doorH);
+    ctx.stroke();
+  }
+
+  drawWheel(ctx, rearX + ppm * 1.6, roadY - ppm * 0.3, wheelR, line, wheelSpin);
+  drawWheel(ctx, rearX + len - ppm * 1.3, roadY - ppm * 0.3, wheelR, line, wheelSpin);
+}
+
+function drawRunner(ctx, view, line, x, state) {
+  const { ppm, curbY } = view;
+  const s = ppm * 0.95;
+  const feetY = curbY + ppm * 0.9;
+  const kneel = state.kneeling;
+  const stride = state.stepCount % 2 === 0 ? 1 : -1;
+  const hipY = feetY - (kneel ? s * 0.45 : s * 0.8);
+
+  ctx.lineCap = "round";
+  ctx.strokeStyle = INK;
+  // Legs: outline first, then the trouser colour on top.
+  const legs = kneel
+    ? [[x - s * 0.1, hipY, x - s * 0.35, feetY], [x + s * 0.1, hipY, x + s * 0.4, feetY - s * 0.05]]
+    : [[x, hipY, x + stride * s * 0.32, feetY], [x, hipY, x - stride * s * 0.3, feetY]];
+  for (const [colour, width] of [[INK, s * 0.26], ["#2f4a7a", s * 0.16]]) {
+    ctx.strokeStyle = colour;
+    ctx.lineWidth = width;
+    for (const [x1, y1, x2, y2] of legs) {
+      ctx.beginPath();
+      ctx.moveTo(x1, y1);
+      ctx.lineTo(x2, y2);
+      ctx.stroke();
+    }
+  }
+
+  const bodyTop = hipY - s * 0.62;
+  // Backpack, then body.
+  roundRect(ctx, x - s * 0.42, bodyTop + s * 0.08, s * 0.24, s * 0.42, s * 0.06);
+  fillStroke(ctx, BUS_GREEN, line);
+  roundRect(ctx, x - s * 0.22, bodyTop, s * 0.44, s * 0.64, s * 0.12);
+  fillStroke(ctx, "#ff7a2f", line);
+  // Arms swing opposite to the legs.
+  ctx.lineWidth = s * 0.12;
+  ctx.strokeStyle = INK;
+  ctx.beginPath();
+  ctx.moveTo(x + s * 0.05, bodyTop + s * 0.15);
+  ctx.lineTo(x + (kneel ? s * 0.4 : -stride * s * 0.35), bodyTop + s * (kneel ? 0.5 : 0.42));
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(x + s * 0.03, bodyTop - s * 0.22, s * 0.24, 0, Math.PI * 2);
+  fillStroke(ctx, "#f2c79b", line);
+  ctx.beginPath();
+  ctx.arc(x - s * 0.02, bodyTop - s * 0.3, s * 0.22, Math.PI, Math.PI * 2);
+  fillStroke(ctx, "#4a2c1a", line * 0.8);
+  ctx.lineCap = "butt";
+}
+
+function drawSteeringWheel(ctx, wheel, line, angle) {
+  const { cx, cy, r } = wheel;
+  // Guide ring: the circle to trace for full speed.
+  ctx.setLineDash([line * 2, line * 2]);
+  ctx.strokeStyle = "rgba(17,17,17,0.35)";
+  ctx.lineWidth = line;
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 1.12, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, 0, Math.PI * 2);
+  ctx.lineWidth = r * 0.2 + line * 2;
+  ctx.strokeStyle = INK;
+  ctx.stroke();
+  ctx.lineWidth = r * 0.2;
+  ctx.strokeStyle = BUS_GREEN;
+  ctx.stroke();
+
+  for (let i = 0; i < 3; i += 1) {
+    const a = angle + (i * Math.PI * 2) / 3 - Math.PI / 2;
+    ctx.lineWidth = r * 0.13 + line * 2;
+    ctx.strokeStyle = INK;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy);
+    ctx.lineTo(cx + Math.cos(a) * r * 0.92, cy + Math.sin(a) * r * 0.92);
+    ctx.stroke();
+    ctx.lineWidth = r * 0.13;
+    ctx.strokeStyle = i === 0 ? "#e33124" : "#2b2b2b";
+    ctx.stroke();
+  }
+  ctx.beginPath();
+  ctx.arc(cx, cy, r * 0.22, 0, Math.PI * 2);
+  fillStroke(ctx, BUS_YELLOW, line * 1.2);
+}
+
+// Camera: keep the runner near the left edge and zoom out as the bus pulls away.
+function computeView(w, h, state, previous) {
+  const gap = START_GAP + state.busD - state.runnerD;
+  const targetSpan = Math.max(10, Math.min(40, gap + 8.5));
+  const span = previous ? previous.span + (targetSpan - previous.span) * 0.08 : targetSpan;
+  const ppm = w / span;
+  const sceneH = h * state.sceneRatio;
+  const groundBottom = sceneH;
+  const curbY = sceneH - Math.min(sceneH * 0.24, ppm * 2.4);
+  const roadY = curbY - ppm * 0.25;
+  const horizonY = roadY - Math.max(ppm * 3.2, sceneH * 0.3);
+  return {
+    w,
+    h,
+    span,
+    ppm,
+    sceneH,
+    groundBottom,
+    curbY,
+    roadY,
+    horizonY,
+    cameraX: state.runnerD - RUNNER_SCREEN_METRES
+  };
+}
+
+function drawFrame(ctx, w, h, state, previousView) {
+  const view = computeView(w, h, state, previousView);
+  const line = Math.max(1.5, w / 190);
+
+  ctx.clearRect(0, 0, w, h);
+  ctx.fillStyle = SKY;
+  ctx.fillRect(0, 0, w, view.horizonY);
+  drawBuildings(ctx, view, line);
+  drawRoad(ctx, view, line);
+
+  const doorWorld = START_GAP + state.busD;
+  const rearX = (doorWorld - DOOR_OFFSET - view.cameraX) * view.ppm;
+  const gap = doorWorld - state.runnerD;
+  drawBus(ctx, view, line, rearX, state.boarded || gap < 2.5);
+  drawRunner(ctx, view, line, RUNNER_SCREEN_METRES * view.ppm, state);
+
+  // Control area under the scene.
+  ctx.fillStyle = SIDEWALK;
+  ctx.fillRect(0, view.sceneH, w, h - view.sceneH);
+  ctx.lineWidth = line * 1.5;
+  ctx.strokeStyle = INK;
+  ctx.beginPath();
+  ctx.moveTo(0, view.sceneH);
+  ctx.lineTo(w, view.sceneH);
+  ctx.stroke();
+  if (state.wheel) drawSteeringWheel(ctx, state.wheel, line, state.wheelAngle);
+
+  return view;
+}
+
+module.exports = {
+  drawFrame
+};

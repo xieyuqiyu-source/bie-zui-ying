@@ -1,0 +1,158 @@
+/* Global classes this component uses; component styles don't inherit app.wxss. */
+button {
+  width: 100%;
+  margin: 0;
+  padding: 0;
+  border: 0;
+  overflow: hidden;
+  background: transparent;
+  line-height: normal;
+}
+
+button::after {
+  border: 0;
+}
+
+.comic-panel {
+  border: 6rpx solid #111;
+  border-radius: 8rpx;
+  background: #fff;
+  box-shadow: 10rpx 10rpx 0 #111;
+}
+
+.primary-button,
+.secondary-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  min-height: 104rpx;
+  padding: 18rpx 20rpx;
+  border: 6rpx solid #111;
+  border-radius: 8rpx;
+  box-sizing: border-box;
+  font-size: 34rpx;
+  font-weight: 900;
+  line-height: 1.2;
+  white-space: normal;
+  word-break: break-all;
+  overflow-wrap: anywhere;
+  overflow: hidden;
+  text-align: center;
+}
+
+.primary-button {
+  color: #fff;
+  background: #e33124;
+  box-shadow: 8rpx 8rpx 0 #111;
+}
+
+.secondary-button {
+  color: #111;
+  background: #fff;
+}
+
+.fame-mask {
+  position: fixed;
+  z-index: 20;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40rpx;
+  box-sizing: border-box;
+  background: rgba(0, 0, 0, 0.55);
+}
+
+.fame-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 20rpx;
+  width: 100%;
+  max-height: 88vh;
+  padding: 32rpx;
+  box-sizing: border-box;
+  overflow-y: auto;
+}
+
+.fame-title {
+  font-size: 42rpx;
+  font-weight: 900;
+  line-height: 1.2;
+}
+
+.fame-copy {
+  margin-top: 18rpx;
+  margin-bottom: 26rpx;
+  font-size: 28rpx;
+  font-weight: 800;
+  line-height: 1.4;
+}
+
+.fame-profile-row {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  margin-bottom: 24rpx;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.avatar-shell {
+  flex: 0 0 132rpx;
+  width: 132rpx;
+  height: 132rpx;
+  border: 6rpx solid #111;
+  border-radius: 50%;
+  box-sizing: border-box;
+  box-shadow: 6rpx 6rpx 0 #111;
+  overflow: hidden;
+  background: #fff;
+}
+
+.avatar-picker {
+  width: 120rpx;
+  height: 120rpx;
+  min-height: 120rpx;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  box-shadow: none;
+  background: transparent;
+}
+
+.avatar-preview,
+.avatar-face {
+  width: 120rpx;
+  height: 120rpx;
+  border-radius: 50%;
+}
+
+.avatar-face {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #111;
+  background: #f7d84a;
+  font-size: 54rpx;
+  font-weight: 900;
+}
+
+.fame-input {
+  flex: 1 1 auto;
+  min-width: 0;
+  height: 92rpx;
+  padding: 0 22rpx;
+  border: 6rpx solid #111;
+  border-radius: 8rpx;
+  box-sizing: border-box;
+  background: #fff;
+  font-size: 32rpx;
+  font-weight: 900;
+}

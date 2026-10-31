@@ -8,17 +8,42 @@ export interface RankingSpec {
   direction: "ASC" | "DESC";
 }
 
+// What a client sends at the end of a match. Games that only need a number ignore trace.
+export interface RawSubmission {
+  score: number;
+  trace?: number[];
+}
+
+export interface Submission {
+  score: number;
+  trace?: number[];
+}
+
+export interface Judgement {
+  ownerScore: number;
+  guestScore: number;
+  winner: "owner" | "guest" | null;
+  // Game-specific numbers for the result page, e.g. when the runner reached the door.
+  detail?: Record<string, number>;
+}
+
+export interface RoleContext {
+  owner?: string;
+  guest?: string;
+}
+
 export interface GameDefinition {
   id: string;
   durationSeconds: number;
-  // "higher" for points, "lower" for things like reaction time.
+  // Asymmetric games: the owner picks one, the guest gets the other.
+  roles?: readonly [string, string];
+  // "higher" for points, "lower" for things like reaction time. Drives best_score.
   betterScore: "higher" | "lower";
-  // Score recorded for a player who never submitted. Must lose to any real score
-  // (0 for "higher" games; a cap value for "lower" games).
-  absentScore: number;
-  normalizeScore(raw: number): number;
-  // > 0 when a beats b, < 0 when b beats a, 0 for a draw.
-  compare(a: number, b: number): number;
-  botScore(): number;
+  // Clamp and validate what the client sent; never trust it as-is.
+  normalizeSubmission(raw: RawSubmission, role?: string): Submission;
+  botSubmission(role?: string): Submission;
+  // owner/guest are undefined when that player never submitted.
+  judge(owner: Submission | undefined, guest: Submission | undefined, roles: RoleContext): Judgement;
+  trashTalk?(judgement: Judgement, roles: RoleContext): string;
   rankings: Partial<Record<RankingType, RankingSpec>>;
 }

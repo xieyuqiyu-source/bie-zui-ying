@@ -1,0 +1,29 @@
+<view class="page bus-lobby">
+  <view class="brand">追赶巴士</view>
+  <view class="subtitle">一个开车，一个追车，15 秒见分晓。</view>
+
+  <view class="taunt">{{taunt}}</view>
+
+  <view class="section-title">你来当</view>
+  <view class="roles">
+    <view class="role comic-panel {{role === 'bus' ? 'is-active' : ''}}" data-role="bus" bindtap="pickRole">
+      <view class="role-glyph">车</view>
+      <view class="role-name">司机</view>
+      <view class="role-copy">绕着方向盘画圈，转得又快又圆车就快。画歪了会减速。</view>
+    </view>
+    <view class="role comic-panel {{role === 'runner' ? 'is-active' : ''}}" data-role="runner" bindtap="pickRole">
+      <view class="role-glyph">跑</view>
+      <view class="role-name">追车的</view>
+      <view class="role-copy">左脚右脚交替狂点。同一只脚点两次会跪下。</view>
+    </view>
+  </view>
+  <view class="role-note">兄弟进房间后自动当另一个。追上车门算追车的赢，时间到了没追上算司机赢。</view>
+
+  <button class="primary-button" loading="{{creating}}" bindtap="createRoom">
+    {{role === 'bus' ? '发车，叫兄弟来追' : '叫兄弟来开车'}}
+  </button>
+  <button class="secondary-button" loading="{{creatingBot}}" bindtap="createBotRoom">
+    先跟陪练跑一趟
+  </button>
+  <button class="secondary-button" bindtap="goRanking">排行榜</button>
+</view>

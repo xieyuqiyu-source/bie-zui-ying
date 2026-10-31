@@ -1,10 +1,8 @@
 <view class="page ranking">
   <view class="brand small">谁最能装</view>
 
-  <view class="tabs">
-    <button class="secondary-button {{type === 'bestScore' ? 'active' : ''}}" data-type="bestScore" bindtap="switchType">最佳</button>
-    <button class="secondary-button {{type === 'wins' ? 'active' : ''}}" data-type="wins" bindtap="switchType">胜场</button>
-    <button class="secondary-button {{type === 'streak' ? 'active' : ''}}" data-type="streak" bindtap="switchType">连胜</button>
+  <view wx:if="{{boards.length > 1}}" class="tabs">
+    <button wx:for="{{boards}}" wx:key="type" class="secondary-button {{type === item.type ? 'active' : ''}}" data-type="{{item.type}}" bindtap="switchType">{{item.label}}</button>
   </view>
 
   <view wx:if="{{items.length === 0}}" class="empty comic-panel">排行榜还没人装起来。</view>
@@ -20,8 +18,8 @@
       </view>
     </view>
     <view class="best-score">
-      <view class="best-number">{{item.user.bestScore}}</view>
-      <view class="best-label">最佳点击</view>
+      <view class="best-number">{{item.value}}</view>
+      <view class="best-label">{{valueLabel}}</view>
     </view>
   </view>
 </view>

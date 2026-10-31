@@ -10,19 +10,21 @@ const userBodySchema = z.object({
 });
 
 const createRoomBodySchema = userBodySchema.extend({
-  gameId: z.enum(gameIds).default(DEFAULT_GAME_ID)
+  gameId: z.enum(gameIds).default(DEFAULT_GAME_ID),
+  role: z.string().max(16).optional()
 });
 
 const scoreBodySchema = z.object({
   userId: z.string(),
-  score: z.coerce.number()
+  score: z.coerce.number().default(0),
+  trace: z.array(z.number()).max(100).optional()
 });
 
 export async function roomRoutes(app: FastifyInstance) {
   app.post("/api/rooms", async (request) => {
     const body = createRoomBodySchema.parse(request.body ?? {});
     const user = await userService.ensureUser(body.userId);
-    const room = await roomService.createRoom(user, body.gameId);
+    const room = await roomService.createRoom(user, body.gameId, body.role);
     await roomSocketService.broadcast(room.id);
     return { user, room, onlineUserIds: roomSocketService.onlineUserIds(room.id) };
   });
@@ -31,7 +33,7 @@ export async function roomRoutes(app: FastifyInstance) {
     const body = createRoomBodySchema.parse(request.body ?? {});
     const user = await userService.ensureUser(body.userId);
     const bot = await userService.createBotUser();
-    const room = await roomService.createBotRoom(user, bot, body.gameId);
+    const room = await roomService.createBotRoom(user, bot, body.gameId, body.role);
     await roomSocketService.broadcast(room.id);
     return { user, room, onlineUserIds: roomSocketService.onlineUserIds(room.id) };
   });
@@ -64,7 +66,7 @@ export async function roomRoutes(app: FastifyInstance) {
   app.post("/api/rooms/:roomId/score", async (request) => {
     const params = z.object({ roomId: z.string() }).parse(request.params);
     const body = scoreBodySchema.parse(request.body);
-    const result = await roomService.submitScore(params.roomId, body.userId, body.score);
+    const result = await roomService.submitScore(params.roomId, body.userId, { score: body.score, trace: body.trace });
     await roomSocketService.broadcast(params.roomId);
     return { ...result, onlineUserIds: roomSocketService.onlineUserIds(params.roomId) };
   });
