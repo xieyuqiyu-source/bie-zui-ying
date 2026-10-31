@@ -32,6 +32,8 @@ export interface RoomPlayer {
 
 export interface Room {
   id: string;
+  // Missing on rooms created before games were split; treat as "tap".
+  gameId?: string;
   code: string;
   status: RoomStatus;
   owner: RoomPlayer;
@@ -49,6 +51,7 @@ export interface Room {
 export interface Match {
   id: string;
   roomId: string;
+  gameId: string;
   playerAId: string;
   playerBId: string;
   playerAScore: number;
@@ -58,4 +61,17 @@ export interface Match {
   durationSeconds: number;
   trashTalk: string;
   createdAt: string;
+}
+
+export interface GameStats {
+  userId: string;
+  gameId: string;
+  wins: number;
+  losses: number;
+  draws: number;
+  currentStreak: number;
+  bestStreak: number;
+  bestScore?: number;
+  totalMatches: number;
+  updatedAt: string;
 }

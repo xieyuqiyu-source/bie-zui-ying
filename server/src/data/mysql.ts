@@ -13,6 +13,18 @@ export const db = mysql.createPool({
   timezone: "Z"
 });
 
+async function columnExists(table: string, column: string) {
+  const [columns] = await db.execute<mysql.RowDataPacket[]>(
+    `SELECT COLUMN_NAME
+     FROM INFORMATION_SCHEMA.COLUMNS
+     WHERE TABLE_SCHEMA = :database
+       AND TABLE_NAME = :table
+       AND COLUMN_NAME = :column`,
+    { database: env.mysql.database, table, column }
+  );
+  return columns.length > 0;
+}
+
 export async function initDatabase() {
   await db.execute(`
     CREATE TABLE IF NOT EXISTS users (
@@ -39,16 +51,7 @@ export async function initDatabase() {
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
   `);
 
-  const [columns] = await db.execute<mysql.RowDataPacket[]>(
-    `SELECT COLUMN_NAME
-     FROM INFORMATION_SCHEMA.COLUMNS
-     WHERE TABLE_SCHEMA = :database
-       AND TABLE_NAME = 'users'
-       AND COLUMN_NAME = 'profile_authorized'`,
-    { database: env.mysql.database }
-  );
-
-  if (columns.length === 0) {
+  if (!(await columnExists("users", "profile_authorized"))) {
     await db.execute(`
       ALTER TABLE users
       ADD COLUMN profile_authorized BOOLEAN NOT NULL DEFAULT FALSE AFTER avatar_url;
@@ -72,5 +75,42 @@ export async function initDatabase() {
       INDEX idx_matches_winner (winner_id),
       INDEX idx_matches_created_at (created_at)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `);
+
+  if (!(await columnExists("matches", "game_id"))) {
+    await db.execute(`
+      ALTER TABLE matches
+      ADD COLUMN game_id VARCHAR(32) NOT NULL DEFAULT 'tap' AFTER room_id;
+    `);
+  }
+
+  // best_score is NULL until the first ranked match, so "lower is better" games can use LEAST().
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS user_game_stats (
+      user_id VARCHAR(32) NOT NULL,
+      game_id VARCHAR(32) NOT NULL,
+      wins INT NOT NULL DEFAULT 0,
+      losses INT NOT NULL DEFAULT 0,
+      draws INT NOT NULL DEFAULT 0,
+      current_streak INT NOT NULL DEFAULT 0,
+      best_streak INT NOT NULL DEFAULT 0,
+      best_score INT NULL,
+      total_matches INT NOT NULL DEFAULT 0,
+      updated_at DATETIME(3) NOT NULL,
+      PRIMARY KEY (user_id, game_id),
+      INDEX idx_stats_wins (game_id, wins),
+      INDEX idx_stats_streak (game_id, current_streak),
+      INDEX idx_stats_best_score (game_id, best_score)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+  `);
+
+  // Carry existing tap stats over from users. INSERT IGNORE keeps rows already written by settlement.
+  await db.execute(`
+    INSERT IGNORE INTO user_game_stats (
+      user_id, game_id, wins, losses, draws, current_streak, best_streak, best_score, total_matches, updated_at
+    )
+    SELECT id, 'tap', wins, losses, draws, current_streak, best_streak, best_score, total_matches, updated_at
+    FROM users
+    WHERE kind <> 'bot' AND total_matches > 0;
   `);
 }

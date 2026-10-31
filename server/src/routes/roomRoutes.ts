@@ -1,11 +1,16 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
+import { DEFAULT_GAME_ID, gameIds } from "../games/index.js";
 import { roomService } from "../services/roomService.js";
 import { roomSocketService } from "../services/roomSocketService.js";
 import { userService } from "../services/userService.js";
 
 const userBodySchema = z.object({
   userId: z.string().optional()
+});
+
+const createRoomBodySchema = userBodySchema.extend({
+  gameId: z.enum(gameIds).default(DEFAULT_GAME_ID)
 });
 
 const scoreBodySchema = z.object({
@@ -15,18 +20,18 @@ const scoreBodySchema = z.object({
 
 export async function roomRoutes(app: FastifyInstance) {
   app.post("/api/rooms", async (request) => {
-    const body = userBodySchema.parse(request.body ?? {});
+    const body = createRoomBodySchema.parse(request.body ?? {});
     const user = await userService.ensureUser(body.userId);
-    const room = await roomService.createRoom(user);
+    const room = await roomService.createRoom(user, body.gameId);
     await roomSocketService.broadcast(room.id);
     return { user, room, onlineUserIds: roomSocketService.onlineUserIds(room.id) };
   });
 
   app.post("/api/rooms/bot", async (request) => {
-    const body = userBodySchema.parse(request.body ?? {});
+    const body = createRoomBodySchema.parse(request.body ?? {});
     const user = await userService.ensureUser(body.userId);
     const bot = await userService.createBotUser();
-    const room = await roomService.createBotRoom(user, bot);
+    const room = await roomService.createBotRoom(user, bot, body.gameId);
     await roomSocketService.broadcast(room.id);
     return { user, room, onlineUserIds: roomSocketService.onlineUserIds(room.id) };
   });

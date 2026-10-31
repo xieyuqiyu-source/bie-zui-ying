@@ -2,14 +2,20 @@ import { nanoid } from "nanoid";
 import type { RowDataPacket } from "mysql2";
 import { db } from "../data/mysql.js";
 import { redis } from "../data/redis.js";
+import { DEFAULT_GAME_ID, getGame } from "../games/index.js";
+import type { GameDefinition, RankingType } from "../games/types.js";
 import type { Match, Room, User } from "../types/domain.js";
 import { addMinutesIso, nowIso } from "../utils/time.js";
+import { gameStatsService } from "./gameStatsService.js";
 import { titleService } from "./titleService.js";
 import { trashTalkService } from "./trashTalkService.js";
 import { userService } from "./userService.js";
 
-const MATCH_SECONDS = 10;
-const MAX_REASONABLE_SCORE = 180;
+// Countdown before play starts, shared by every game.
+const COUNTDOWN_MS = 3000;
+// The stats columns on `users` (and the titles derived from them) belong to this game.
+// Keep writing them until clients read user_game_stats instead.
+const LEGACY_USER_STATS_GAME_ID = DEFAULT_GAME_ID;
 const ROOM_TTL_SECONDS = 60 * 15;
 // How long after playEndsAt we wait for a player's score before settling without it.
 const SUBMIT_GRACE_MS = 10_000;
@@ -18,6 +24,7 @@ const roomLocks = new Map<string, Promise<void>>();
 interface MatchRow extends RowDataPacket {
   id: string;
   room_id: string;
+  game_id: string;
   player_a_id: string;
   player_b_id: string;
   player_a_score: number;
@@ -51,6 +58,7 @@ function rowToMatch(row: MatchRow): Match {
   return {
     id: row.id,
     roomId: row.room_id,
+    gameId: row.game_id,
     playerAId: row.player_a_id,
     playerBId: row.player_b_id,
     playerAScore: row.player_a_score,
@@ -110,19 +118,23 @@ function touchUser(user: User) {
   user.updatedAt = nowIso();
 }
 
-function botScore() {
-  const botBase = 58 + Math.floor(Math.random() * 42);
-  const swing = Math.floor(Math.random() * 19) - 9;
-  return Math.max(30, Math.min(MAX_REASONABLE_SCORE, botBase + swing));
+function roomGame(room: Room) {
+  return getGame(room.gameId ?? DEFAULT_GAME_ID);
+}
+
+function playWindow(game: GameDefinition) {
+  const playStartAt = new Date(Date.now() + COUNTDOWN_MS).toISOString();
+  const playEndsAt = new Date(Date.now() + COUNTDOWN_MS + game.durationSeconds * 1000).toISOString();
+  return { playStartAt, playEndsAt };
 }
 
 async function insertMatch(match: Match) {
   await db.execute(
     `INSERT INTO matches (
-      id, room_id, player_a_id, player_b_id, player_a_score, player_b_score,
+      id, room_id, game_id, player_a_id, player_b_id, player_a_score, player_b_score,
       winner_id, result_type, duration_seconds, trash_talk, created_at
     ) VALUES (
-      :id, :roomId, :playerAId, :playerBId, :playerAScore, :playerBScore,
+      :id, :roomId, :gameId, :playerAId, :playerBId, :playerAScore, :playerBScore,
       :winnerId, :resultType, :durationSeconds, :trashTalk, :createdAt
     )`,
     {
@@ -145,27 +157,30 @@ function isOverdue(room: Room) {
 }
 
 async function settleMatch(room: Room, owner: User, guest: User) {
+  const game = roomGame(room);
   const guestPlayer = room.guest!;
   const ownerAbsent = room.owner.score === undefined;
   const guestAbsent = guestPlayer.score === undefined;
-  const ownerScore = room.owner.score ?? 0;
-  const guestScore = guestPlayer.score ?? 0;
+  const ownerScore = room.owner.score ?? game.absentScore;
+  const guestScore = guestPlayer.score ?? game.absentScore;
 
-  const ownerWon = ownerScore > guestScore;
-  const guestWon = guestScore > ownerScore;
+  const diff = game.compare(ownerScore, guestScore);
+  const ownerWon = diff > 0;
+  const guestWon = diff < 0;
   const winnerId = ownerWon ? owner.id : guestWon ? guest.id : undefined;
   const trashTalk = winnerId ? trashTalkService.win() : trashTalkService.draw();
 
   const match: Match = {
     id: room.matchId!,
     roomId: room.id,
+    gameId: game.id,
     playerAId: owner.id,
     playerBId: guest.id,
     playerAScore: ownerScore,
     playerBScore: guestScore,
     winnerId,
     resultType: winnerId ? "win" : "draw",
-    durationSeconds: MATCH_SECONDS,
+    durationSeconds: game.durationSeconds,
     trashTalk,
     createdAt: nowIso()
   };
@@ -178,7 +193,9 @@ async function settleMatch(room: Room, owner: User, guest: User) {
   // A match nobody submitted to says nothing about either player, so it doesn't count.
   const rankedMatch = owner.kind !== "bot" && guest.kind !== "bot" && !(ownerAbsent && guestAbsent);
 
-  if (rankedMatch) {
+  const writeLegacyStats = rankedMatch && game.id === LEGACY_USER_STATS_GAME_ID;
+
+  if (writeLegacyStats) {
     for (const user of [owner, guest]) {
       user.totalMatches += 1;
       user.bestScore = Math.max(user.bestScore, user.id === owner.id ? ownerScore : guestScore);
@@ -203,10 +220,14 @@ async function settleMatch(room: Room, owner: User, guest: User) {
     touchUser(guest);
   }
 
+  const outcomeOf = (won: boolean, lost: boolean): "win" | "loss" | "draw" => (won ? "win" : lost ? "loss" : "draw");
+
   await insertMatch(match);
   await Promise.all([
-    rankedMatch ? userService.saveUserStats(owner) : undefined,
-    rankedMatch ? userService.saveUserStats(guest) : undefined,
+    rankedMatch ? gameStatsService.recordResult(owner.id, game.id, outcomeOf(ownerWon, guestWon), ownerScore) : undefined,
+    rankedMatch ? gameStatsService.recordResult(guest.id, game.id, outcomeOf(guestWon, ownerWon), guestScore) : undefined,
+    writeLegacyStats ? userService.saveUserStats(owner) : undefined,
+    writeLegacyStats ? userService.saveUserStats(guest) : undefined,
     saveRoom(room)
   ]);
 
@@ -221,12 +242,13 @@ async function loadPlayers(room: Room) {
 }
 
 function fillBotScores(room: Room, owner: User, guest: User) {
+  const game = roomGame(room);
   if (guest.kind === "bot" && room.guest!.score === undefined) {
-    room.guest!.score = botScore();
+    room.guest!.score = game.botScore();
     room.guest!.submittedAt = nowIso();
   }
   if (owner.kind === "bot" && room.owner.score === undefined) {
-    room.owner.score = botScore();
+    room.owner.score = game.botScore();
     room.owner.submittedAt = nowIso();
   }
 }
@@ -241,9 +263,11 @@ async function settleIfOverdue(room: Room) {
 }
 
 export const roomService = {
-  async createRoom(owner: User) {
+  async createRoom(owner: User, gameId: string = DEFAULT_GAME_ID) {
+    const game = getGame(gameId);
     const room: Room = {
       id: nanoid(16),
+      gameId: game.id,
       code: nanoid(8),
       status: "waiting",
       owner: { userId: owner.id, ready: false },
@@ -254,11 +278,12 @@ export const roomService = {
     return serializeRoom(room);
   },
 
-  async createBotRoom(owner: User, bot: User) {
-    const playStartAt = new Date(Date.now() + 3000).toISOString();
-    const playEndsAt = new Date(Date.now() + 3000 + MATCH_SECONDS * 1000).toISOString();
+  async createBotRoom(owner: User, bot: User, gameId: string = DEFAULT_GAME_ID) {
+    const game = getGame(gameId);
+    const { playStartAt, playEndsAt } = playWindow(game);
     const room: Room = {
       id: nanoid(16),
+      gameId: game.id,
       code: nanoid(8),
       status: "countdown",
       owner: { userId: owner.id, ready: true },
@@ -293,10 +318,11 @@ export const roomService = {
       if (existing) return serializeRoom(existing);
     }
 
-    const playStartAt = new Date(Date.now() + 3000).toISOString();
-    const playEndsAt = new Date(Date.now() + 3000 + MATCH_SECONDS * 1000).toISOString();
+    const game = roomGame(oldRoom);
+    const { playStartAt, playEndsAt } = playWindow(game);
     const room: Room = {
       id: nanoid(16),
+      gameId: game.id,
       code: nanoid(8),
       status: "countdown",
       owner: { userId: oldRoom.owner.userId, ready: true },
@@ -359,8 +385,7 @@ export const roomService = {
 
     if (room.owner.ready && room.guest.ready && room.status === "waiting") {
       const countdownStartAt = nowIso();
-      const playStartAt = new Date(Date.now() + 3000).toISOString();
-      const playEndsAt = new Date(Date.now() + 3000 + MATCH_SECONDS * 1000).toISOString();
+      const { playStartAt, playEndsAt } = playWindow(roomGame(room));
       room.status = "countdown";
       room.countdownStartAt = countdownStartAt;
       room.playStartAt = playStartAt;
@@ -385,7 +410,7 @@ export const roomService = {
       return { room: await serializeRoom(room), match: await findMatchByRoom(room.id) };
     }
 
-    const normalizedScore = Math.max(0, Math.min(Math.floor(score), MAX_REASONABLE_SCORE));
+    const normalizedScore = roomGame(room).normalizeScore(score);
 
     if (room.owner.userId === userId) {
       room.owner.score = normalizedScore;
@@ -410,14 +435,27 @@ export const roomService = {
     });
   },
 
-  async rankings(type: "wins" | "streak" | "bestScore" = "wins") {
-    const users = await userService.rankings(type);
-    return users.map((user, index) => ({
+  async rankings(gameId: string = DEFAULT_GAME_ID, type: RankingType = "wins") {
+    const rows = await gameStatsService.rankings(gameId, type);
+    // Same shape as before: user.wins/losses/bestScore are this game's numbers.
+    return rows.map(({ user, stats }, index) => ({
       rank: index + 1,
-      user: publicUser(user),
-      currentStreak: user.currentStreak,
-      bestStreak: user.bestStreak,
-      totalMatches: user.totalMatches
+      gameId,
+      user: {
+        id: user.id,
+        nickname: user.nickname,
+        initial: user.nickname.slice(0, 1),
+        avatarUrl: user.avatarUrl,
+        profileAuthorized: user.profileAuthorized,
+        title: user.title,
+        wins: stats.wins,
+        losses: stats.losses,
+        bestScore: stats.bestScore ?? null
+      },
+      draws: stats.draws,
+      currentStreak: stats.currentStreak,
+      bestStreak: stats.bestStreak,
+      totalMatches: stats.totalMatches
     }));
   }
 };
