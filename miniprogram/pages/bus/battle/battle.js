@@ -39,8 +39,8 @@ Page({
     role: "",
     roleName: "",
     phase: "loading",
-    timeLeftText: "15.0",
-    gapText: "12.0",
+    timeLeftText: (rules.DURATION_MS / 1000).toFixed(1),
+    gapText: rules.START_GAP.toFixed(1),
     footHint: "",
     nextFoot: "left",
     kneeling: false,
@@ -105,7 +105,8 @@ Page({
     this.stepCount = 0;
     this.stepTimes = [];
     this.lastFoot = "";
-    this.lastStepAt = 0;
+    // Distance earned by taps but not yet walked (see RUNNER_MAX_SPEED).
+    this.pendingD = 0;
     this.kneelUntil = 0;
     this.busSpeed = rules.BUS_MIN_SPEED;
     this.wheelAngle = 0;
@@ -113,6 +114,9 @@ Page({
     this.lastTouchAngle = null;
     this.lastTouchQuality = 1;
     this.lastFrameAt = 0;
+    this.pageStart = Date.now();
+    // Smoothed on-screen numbers for the characters' animation.
+    this.anim = { runnerD: 0, runnerSpeed: 0, busD: 0, busSpeed: rules.BUS_MIN_SPEED };
 
     this.setData({
       role: this.role,
@@ -225,6 +229,7 @@ Page({
     } else if (!this.finished) {
       if (this.data.phase !== "playing") this.setData({ phase: "playing" });
       if (this.role === "bus") this.updateBus(now, dt);
+      else this.payOutSteps(now);
       this.recordSamples(now);
       this.sendPosition(now);
       if (now >= this.playEnd) this.finish();
@@ -242,7 +247,9 @@ Page({
       this.boarded = true;
       this.finish();
     }
+    if (this.boarded && !this.boardedAt) this.boardedAt = now;
 
+    this.updateAnim(dt, busD, runnerD);
     this.updateHud(now, gap);
     this.view = drawFrame(
       this.ctx,
@@ -254,13 +261,32 @@ Page({
         sceneRatio: this.sceneRatio,
         banner: this.bannerFor(now),
         kneeling: this.role === "runner" ? now < this.kneelUntil : false,
-        stepCount: this.role === "runner" ? this.stepCount : Math.floor(runnerD / rules.STEP_METRES),
+        time: (now - this.pageStart) / 1000,
+        // One stride per step: the legs cycle half a turn every STEP_METRES.
+        runnerPhase: (this.anim.runnerD / rules.STEP_METRES) * Math.PI,
+        runnerSpeed: this.anim.runnerSpeed,
+        boardProgress: this.boardedAt ? Math.min(1, (now - this.boardedAt) / 550) : 0,
+        busSpeed: this.role === "bus" ? this.busSpeed : this.anim.busSpeed,
+        // The other player's driver turns the wheel in step with how far the bus went.
+        driverSpin: this.role === "bus" ? this.wheelAngle : this.anim.busD * 1.6,
         boarded: this.boarded,
         wheel: this.role === "bus" ? this.wheel : null,
         wheelAngle: this.wheelAngle
       },
       this.view
     );
+  },
+
+  updateAnim(dt, busD, runnerD) {
+    const a = this.anim;
+    if (dt <= 0) return;
+    // Our own runner jumps 0.5 m per tap; glide there so the legs don't snap.
+    const nextRunnerD = a.runnerD + (runnerD - a.runnerD) * Math.min(1, dt * 14);
+    const k = Math.min(1, dt * 4);
+    a.runnerSpeed += ((nextRunnerD - a.runnerD) / dt - a.runnerSpeed) * k;
+    a.busSpeed += ((busD - a.busD) / dt - a.busSpeed) * k;
+    a.runnerD = nextRunnerD;
+    a.busD = busD;
   },
 
   updateHud(now, gap) {
@@ -274,7 +300,7 @@ Page({
     const kneeling = this.role === "runner" && now < this.kneelUntil;
     if (kneeling !== this.data.kneeling) {
       next.kneeling = kneeling;
-      next.footHint = kneeling ? "踩错脚，跪了！" : this.data.nextFoot === "left" ? "换左脚" : "换右脚";
+      next.footHint = kneeling ? "踩错脚，跪了！" : "左右交替，别踩同一只";
     }
     if (next.timeLeftText !== this.data.timeLeftText || next.gapText !== this.data.gapText || "kneeling" in next) {
       this.setData(next);
@@ -304,7 +330,6 @@ Page({
     const foot = event.currentTarget.dataset.foot;
     const now = Date.now();
     if (now < this.kneelUntil) return;
-    if (now - this.lastStepAt < rules.MIN_STEP_INTERVAL_MS) return;
 
     if (foot === this.lastFoot) {
       this.kneelUntil = now + rules.KNEEL_MS;
@@ -315,13 +340,28 @@ Page({
     }
 
     this.lastFoot = foot;
-    this.lastStepAt = now;
     this.stepCount += 1;
     this.stepTimes.push(now);
-    if (this.stepTimes.length > 12) this.stepTimes.shift();
-    this.myD += rules.STEP_METRES;
-    const nextFoot = foot === "left" ? "right" : "left";
-    this.setData({ nextFoot, footHint: nextFoot === "left" ? "换左脚" : "换右脚" });
+    if (this.stepTimes.length > 24) this.stepTimes.shift();
+    this.pendingD += rules.STEP_METRES;
+    this.payOutSteps(now);
+    // Only the highlight changes per tap; the hint text stays put so setData stays tiny.
+    this.setData({ nextFoot: foot === "left" ? "right" : "left" });
+  },
+
+  // Walk banked distance, no faster than RUNNER_MAX_SPEED since the last payout.
+  payOutSteps(now) {
+    if (this.pendingD <= 0) {
+      this.lastPayoutAt = now;
+      return;
+    }
+    const since = this.lastPayoutAt ? Math.max(0, now - this.lastPayoutAt) / 1000 : 1;
+    // A pause lets one step through at once; flat-out tapping is held to the cap.
+    const allowance = Math.max(rules.STEP_METRES, rules.RUNNER_MAX_SPEED * since);
+    const step = Math.min(this.pendingD, allowance);
+    this.myD += step;
+    this.pendingD -= step;
+    this.lastPayoutAt = now;
   },
 
   // --- bus ---
@@ -428,7 +468,7 @@ Page({
     if (this.role === "bus") return this.busSpeed;
     if (now < this.kneelUntil) return 0;
     const recent = this.stepTimes.filter((at) => now - at <= rules.SAMPLE_MS).length;
-    return (recent * rules.STEP_METRES) / (rules.SAMPLE_MS / 1000);
+    return Math.min(rules.RUNNER_MAX_SPEED, (recent * rules.STEP_METRES) / (rules.SAMPLE_MS / 1000));
   },
 
   goResult() {

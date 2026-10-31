@@ -5,15 +5,15 @@ import type { GameDefinition, Judgement, RoleContext, Submission } from "./types
 //
 // Each client samples its own cumulative distance (metres) every SAMPLE_SECONDS and submits
 // the samples as `trace`. Keep these numbers in sync with miniprogram/pages/bus/rules.js.
-const DURATION_SECONDS = 15;
+const DURATION_SECONDS = 20;
 const SAMPLE_SECONDS = 0.5;
 const SAMPLE_COUNT = DURATION_SECONDS / SAMPLE_SECONDS;
-const START_GAP_METRES = 12;
+const START_GAP_METRES = 15;
 // The server sees positions only every half second, so allow a little slack at the door.
 const CATCH_TOLERANCE_METRES = 1.2;
 const BUS_MIN_SPEED = 0.5;
 const BUS_MAX_SPEED = 3;
-const RUNNER_MAX_SPEED = 6;
+const RUNNER_MAX_SPEED = 5;
 // Slack for clock jitter between samples.
 const SPEED_TOLERANCE = 1.05;
 
@@ -98,14 +98,14 @@ function botTrace(role: Role) {
     let speed: number;
     if (role === "bus") {
       // A middling driver: around 2.4 m/s, surging and sagging as it loses rhythm.
-      speed = 2.4 + 0.5 * Math.sin(phase + i / 3) + (Math.random() - 0.5) * 0.4;
+      speed = 2.4 + 0.4 * Math.sin(phase + i / 3) + (Math.random() - 0.5) * 0.4;
       speed = Math.max(BUS_MIN_SPEED, Math.min(BUS_MAX_SPEED, speed));
     } else if (stumbleSamples > 0) {
       stumbleSamples -= 1;
       speed = 1;
     } else {
-      // Around 7 steps a second, and now and then it hits the same foot twice and kneels.
-      speed = 3.4 + (Math.random() - 0.5) * 0.8;
+      // Around 8.5 steps a second, and now and then it hits the same foot twice and kneels.
+      speed = 3.5 + (Math.random() - 0.5) * 0.8;
       if (Math.random() < 0.08) stumbleSamples = 1;
     }
     total += speed * SAMPLE_SECONDS;

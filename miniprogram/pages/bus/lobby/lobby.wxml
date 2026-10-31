@@ -1,6 +1,6 @@
 <view class="page bus-lobby">
   <view class="brand">追赶巴士</view>
-  <view class="subtitle">一个开车，一个追车，15 秒见分晓。</view>
+  <view class="subtitle">一个开车，一个追车，20 秒见分晓。</view>
 
   <view class="taunt">{{taunt}}</view>
 

@@ -72,7 +72,7 @@ Page({
   onShareAppMessage() {
     const ownerRole = this.data.room.owner && this.data.room.owner.role;
     return {
-      title: ownerRole === "runner" ? "我追车，你开车，敢不敢甩掉我？" : "我开车，你来追，15 秒追不上算你输。",
+      title: ownerRole === "runner" ? "我追车，你开车，敢不敢甩掉我？" : "我开车，你来追，20 秒追不上算你输。",
       path: `/pages/bus/room/room?roomId=${this.data.roomId}`
     };
   },

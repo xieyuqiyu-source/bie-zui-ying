@@ -1,5 +1,6 @@
 // Draws one frame of 追赶巴士 on a 2d canvas. Pure drawing: all game state comes in `state`.
 const { START_GAP } = require("../rules");
+const { drawRunner, drawDriver, drawExhaust, drawSpeedLines } = require("./characters");
 
 const INK = "#111";
 const SKY = "#fff3c4";
@@ -113,7 +114,7 @@ function drawWheel(ctx, cx, cy, r, line, spin) {
   ctx.stroke();
 }
 
-function drawBus(ctx, view, line, rearX, open) {
+function drawBus(ctx, view, line, rearX, open, state) {
   const { ppm, roadY } = view;
   const len = BUS_LENGTH * ppm;
   const height = 2.3 * ppm;
@@ -121,6 +122,13 @@ function drawBus(ctx, view, line, rearX, open) {
   const wheelR = ppm * 0.42;
   const wheelSpin = (rearX / ppm) * 1.2;
 
+  drawExhaust(ctx, rearX - ppm * 0.05, roadY - ppm * 0.55, ppm, line, state.time, state.busSpeed);
+  drawSpeedLines(ctx, rearX, top, height, ppm * 2, line, state.time, state.busSpeed);
+
+  // The body rocks a little at speed.
+  const rock = Math.sin(state.time * 18) * ppm * 0.02 * Math.min(1, state.busSpeed / 3);
+  ctx.save();
+  ctx.translate(0, rock);
   roundRect(ctx, rearX, top, len, height, ppm * 0.25);
   fillStroke(ctx, BUS_YELLOW, line * 1.4);
   // White window band and green stripe.
@@ -129,16 +137,26 @@ function drawBus(ctx, view, line, rearX, open) {
   ctx.fillStyle = BUS_GREEN;
   ctx.fillRect(rearX + line, top + height * 0.66, len - line * 2, ppm * 0.18);
 
-  // Window frames.
+  // The driver sits in the front pane, then the window frames go on top.
+  const paneW = (len - ppm * 0.4) / 5;
+  drawDriver(
+    ctx,
+    { x: rearX + ppm * 0.2 + paneW * 4, y: top + ppm * 0.2, w: paneW, h: height * 0.42 },
+    line,
+    { spin: state.driverSpin, speed: state.busSpeed, time: state.time }
+  );
   ctx.strokeStyle = INK;
   ctx.lineWidth = line * 0.8;
   for (let i = 1; i < 5; i += 1) {
-    const x = rearX + ppm * 0.2 + ((len - ppm * 0.4) * i) / 5;
+    const x = rearX + ppm * 0.2 + paneW * i;
     ctx.beginPath();
     ctx.moveTo(x, top + ppm * 0.2);
     ctx.lineTo(x, top + ppm * 0.2 + height * 0.42);
     ctx.stroke();
   }
+  roundRect(ctx, rearX + ppm * 0.2, top + ppm * 0.2, len - ppm * 0.4, height * 0.42, ppm * 0.12);
+  ctx.lineWidth = line;
+  ctx.stroke();
 
   // Door near the rear; it slides open while the runner is close.
   const doorX = rearX + (DOOR_OFFSET - 0.45) * ppm;
@@ -154,56 +172,10 @@ function drawBus(ctx, view, line, rearX, open) {
     ctx.stroke();
   }
 
+  ctx.restore();
   drawWheel(ctx, rearX + ppm * 1.6, roadY - ppm * 0.3, wheelR, line, wheelSpin);
   drawWheel(ctx, rearX + len - ppm * 1.3, roadY - ppm * 0.3, wheelR, line, wheelSpin);
-}
-
-function drawRunner(ctx, view, line, x, state) {
-  const { ppm, curbY } = view;
-  const s = ppm * 0.95;
-  const feetY = curbY + ppm * 0.9;
-  const kneel = state.kneeling;
-  const stride = state.stepCount % 2 === 0 ? 1 : -1;
-  const hipY = feetY - (kneel ? s * 0.45 : s * 0.8);
-
-  ctx.lineCap = "round";
-  ctx.strokeStyle = INK;
-  // Legs: outline first, then the trouser colour on top.
-  const legs = kneel
-    ? [[x - s * 0.1, hipY, x - s * 0.35, feetY], [x + s * 0.1, hipY, x + s * 0.4, feetY - s * 0.05]]
-    : [[x, hipY, x + stride * s * 0.32, feetY], [x, hipY, x - stride * s * 0.3, feetY]];
-  for (const [colour, width] of [[INK, s * 0.26], ["#2f4a7a", s * 0.16]]) {
-    ctx.strokeStyle = colour;
-    ctx.lineWidth = width;
-    for (const [x1, y1, x2, y2] of legs) {
-      ctx.beginPath();
-      ctx.moveTo(x1, y1);
-      ctx.lineTo(x2, y2);
-      ctx.stroke();
-    }
-  }
-
-  const bodyTop = hipY - s * 0.62;
-  // Backpack, then body.
-  roundRect(ctx, x - s * 0.42, bodyTop + s * 0.08, s * 0.24, s * 0.42, s * 0.06);
-  fillStroke(ctx, BUS_GREEN, line);
-  roundRect(ctx, x - s * 0.22, bodyTop, s * 0.44, s * 0.64, s * 0.12);
-  fillStroke(ctx, "#ff7a2f", line);
-  // Arms swing opposite to the legs.
-  ctx.lineWidth = s * 0.12;
-  ctx.strokeStyle = INK;
-  ctx.beginPath();
-  ctx.moveTo(x + s * 0.05, bodyTop + s * 0.15);
-  ctx.lineTo(x + (kneel ? s * 0.4 : -stride * s * 0.35), bodyTop + s * (kneel ? 0.5 : 0.42));
-  ctx.stroke();
-
-  ctx.beginPath();
-  ctx.arc(x + s * 0.03, bodyTop - s * 0.22, s * 0.24, 0, Math.PI * 2);
-  fillStroke(ctx, "#f2c79b", line);
-  ctx.beginPath();
-  ctx.arc(x - s * 0.02, bodyTop - s * 0.3, s * 0.22, Math.PI, Math.PI * 2);
-  fillStroke(ctx, "#4a2c1a", line * 0.8);
-  ctx.lineCap = "butt";
+  return doorX + doorW / 2;
 }
 
 function drawSteeringWheel(ctx, wheel, line, angle) {
@@ -314,8 +286,22 @@ function drawFrame(ctx, w, h, state, previousView) {
   const doorWorld = START_GAP + state.busD;
   const rearX = (doorWorld - DOOR_OFFSET - view.cameraX) * view.ppm;
   const gap = doorWorld - state.runnerD;
-  drawBus(ctx, view, line, rearX, state.boarded || gap < 2.5);
-  drawRunner(ctx, view, line, RUNNER_SCREEN_METRES * view.ppm, state);
+  const doorCenterX = drawBus(ctx, view, line, rearX, state.boarded || gap < 2.5, state);
+  drawRunner(
+    ctx,
+    RUNNER_SCREEN_METRES * view.ppm,
+    view.curbY + view.ppm * 0.9,
+    view.ppm * 1.7,
+    line,
+    {
+      phase: state.runnerPhase,
+      speed: state.runnerSpeed,
+      kneeling: state.kneeling,
+      time: state.time,
+      board: state.boardProgress
+    },
+    doorCenterX
+  );
 
   // Control area under the scene (driver only).
   if (view.sceneH < h) {
