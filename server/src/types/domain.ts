@@ -2,7 +2,7 @@ export type UserKind = "anonymous" | "wechat" | "bot";
 
 export type RoomStatus = "waiting" | "countdown" | "playing" | "finished" | "expired";
 
-export type MatchResultType = "win" | "draw";
+export type MatchResultType = "win" | "draw" | "coop_win" | "coop_lose";
 
 export interface User {
   id: string;

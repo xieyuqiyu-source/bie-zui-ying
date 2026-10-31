@@ -1,6 +1,6 @@
 import type { FastifyInstance } from "fastify";
 import { z } from "zod";
-import { DEFAULT_GAME_ID, gameIds } from "../games/index.js";
+import { DEFAULT_GAME_ID, gameIds, getGame } from "../games/index.js";
 import { roomService } from "../services/roomService.js";
 import { roomSocketService } from "../services/roomSocketService.js";
 import { userService } from "../services/userService.js";
@@ -31,6 +31,8 @@ export async function roomRoutes(app: FastifyInstance) {
 
   app.post("/api/rooms/bot", async (request) => {
     const body = createRoomBodySchema.parse(request.body ?? {});
+    // Check before creating the bot user, so unsupported games don't leave bots behind.
+    if (!getGame(body.gameId).botSubmission) throw new Error("BOT_NOT_SUPPORTED");
     const user = await userService.ensureUser(body.userId);
     const bot = await userService.createBotUser();
     const room = await roomService.createBotRoom(user, bot, body.gameId, body.role);

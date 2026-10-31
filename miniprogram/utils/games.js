@@ -20,6 +20,15 @@ const GAMES = [
     entry: "/pages/bus/lobby/lobby"
   },
   {
+    id: "coffin",
+    name: "双人抬棺",
+    glyph: "棺",
+    accent: "#5b3a29",
+    tagline: "两人一前一后抬着走，稳住别把人颠下来，最后倒进坑里。",
+    tags: ["双人合作", "物理", "20 秒"],
+    entry: "/pages/coffin/lobby/lobby"
+  },
+  {
     id: "reaction",
     name: "反应对决",
     glyph: "快",

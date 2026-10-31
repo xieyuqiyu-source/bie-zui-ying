@@ -1,0 +1,134 @@
+.coffin-play {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  height: 100vh;
+  overflow: hidden;
+  background: #f7d84a;
+}
+
+.hud {
+  position: absolute;
+  top: 20rpx;
+  left: 32rpx;
+  right: 32rpx;
+  z-index: 2;
+}
+
+.hud-panel {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  padding: 14rpx 20rpx;
+  border: 6rpx solid #111;
+  border-radius: 8rpx;
+  background: #fff;
+  box-shadow: 8rpx 8rpx 0 #111;
+}
+
+.hud-side {
+  padding: 6rpx 14rpx;
+  border: 4rpx solid #111;
+  border-radius: 8rpx;
+  color: #fff;
+  font-size: 26rpx;
+  font-weight: 900;
+}
+
+.hud-time {
+  font-size: 48rpx;
+  font-weight: 900;
+}
+
+.hud-status {
+  flex: 1;
+  font-size: 28rpx;
+  font-weight: 800;
+  text-align: right;
+}
+
+.live-row {
+  display: flex;
+  align-items: center;
+  gap: 10rpx;
+  margin-top: 14rpx;
+  font-size: 24rpx;
+  font-weight: 800;
+}
+
+.live-dot {
+  width: 18rpx;
+  height: 18rpx;
+  border: 4rpx solid #111;
+  border-radius: 50%;
+  background: #bbb;
+}
+
+.live-row.is-online .live-dot {
+  background: #2fb36b;
+}
+
+.scene {
+  flex: 1;
+  width: 100%;
+  border-bottom: 6rpx solid #111;
+}
+
+.banner {
+  position: absolute;
+  top: 34%;
+  left: 48rpx;
+  right: 48rpx;
+  z-index: 3;
+  padding: 28rpx;
+  border: 6rpx solid #111;
+  border-radius: 8rpx;
+  background: #fff;
+  box-shadow: 10rpx 10rpx 0 #111;
+  text-align: center;
+}
+
+.banner-title {
+  font-size: 72rpx;
+  font-weight: 900;
+}
+
+.banner-sub {
+  margin-top: 8rpx;
+  font-size: 28rpx;
+  font-weight: 800;
+}
+
+.controls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20rpx;
+  padding: 24rpx 32rpx 12rpx;
+}
+
+.pose-button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 120rpx;
+  border: 6rpx solid #111;
+  border-radius: 8rpx;
+  background: #fff;
+  box-shadow: 8rpx 8rpx 0 #111;
+  font-size: 40rpx;
+  font-weight: 900;
+}
+
+.pose-button.is-active {
+  background: #111;
+  color: #f7d84a;
+  box-shadow: none;
+  transform: translate(8rpx, 8rpx);
+}
+
+.hint {
+  padding: 0 32rpx 40rpx;
+  font-size: 24rpx;
+  font-weight: 700;
+  text-align: center;
+}

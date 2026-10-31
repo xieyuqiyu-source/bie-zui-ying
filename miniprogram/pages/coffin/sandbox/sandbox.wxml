@@ -1,0 +1,33 @@
+<view class="sandbox">
+  <view class="hud">
+    <view class="hud-panel">
+      <text class="hud-time">{{timeText}}</text>
+      <text class="hud-status">{{statusText}}</text>
+    </view>
+  </view>
+
+  <canvas id="scene" type="2d" class="scene"></canvas>
+
+  <view class="controls">
+    <view wx:for="{{sides}}" wx:for-item="side" wx:key="who" class="side">
+      <view class="side-label" style="background: {{side.color}}">{{side.label}}</view>
+      <view
+        wx:for="{{poses}}"
+        wx:for-item="pose"
+        wx:key="id"
+        class="pose-button {{side.pose === pose.id ? 'is-active' : ''}}"
+        data-who="{{side.who}}"
+        data-pose="{{pose.id}}"
+        bindtouchstart="pressPose"
+      >{{pose.label}}</view>
+    </view>
+  </view>
+
+  <view wx:if="{{result}}" class="result-mask">
+    <view class="result-card comic-panel">
+      <view class="result-title">{{result.title}}</view>
+      <view class="result-text">{{result.text}}</view>
+      <button class="primary-button" bindtap="restart">再抬一次</button>
+    </view>
+  </view>
+</view>

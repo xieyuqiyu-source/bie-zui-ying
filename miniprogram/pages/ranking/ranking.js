@@ -8,7 +8,12 @@ const BOARDS = {
     { type: "wins", label: "胜场", valueLabel: "最佳点击", field: "bestScore" },
     { type: "streak", label: "连胜", valueLabel: "最佳点击", field: "bestScore" }
   ],
-  bus: [{ type: "wins", label: "总胜场", valueLabel: "胜场", field: "wins" }]
+  bus: [{ type: "wins", label: "总胜场", valueLabel: "胜场", field: "wins" }],
+  // Cooperative: wins are deliveries, best score is the fastest delivery in ms.
+  coffin: [
+    { type: "wins", label: "送达次数", valueLabel: "送达", field: "wins" },
+    { type: "bestScore", label: "最快", valueLabel: "最快（秒）", field: "bestScore", msToSeconds: true }
+  ]
 };
 
 Page({
@@ -38,7 +43,7 @@ Page({
       const board = this.data.boards.find((item) => item.type === this.data.type) || this.data.boards[0];
       const items = (result.items || []).map((item) => ({
         ...item,
-        value: item.user ? item.user[board.field] : 0,
+        value: !item.user ? 0 : board.msToSeconds ? (item.user[board.field] / 1000).toFixed(1) : item.user[board.field],
         isMe: item.user && item.user.id === user.id
       }));
       this.setData({ user, items, valueLabel: board.valueLabel });

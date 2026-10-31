@@ -10,7 +10,12 @@
     "pages/bus/lobby/lobby",
     "pages/bus/room/room",
     "pages/bus/battle/battle",
-    "pages/bus/result/result"
+    "pages/bus/result/result",
+    "pages/coffin/lobby/lobby",
+    "pages/coffin/room/room",
+    "pages/coffin/play/play",
+    "pages/coffin/result/result",
+    "pages/coffin/sandbox/sandbox"
   ],
   "window": {
     "navigationBarTitleText": "别嘴硬",

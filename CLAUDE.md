@@ -202,6 +202,7 @@ ssh aitools-server 'cd /opt/bie-zui-ying/server && npm ci && npm run build && sy
 **安全**
 - 无鉴权，`userId` 就是凭证，排行榜接口又公开了所有人的 id → 可以冒充任何人改资料、提交分数、在 WS 里发消息。修法：登录签发 token（Redis session 或 JWT），HTTP 和 WS 都从 token 取用户。
 - 分数完全客户端上报，上限 180（18 次/秒）。没有点击频率/节奏校验。
+- 双人抬棺的胜负由房主手机上的物理决定，服务端只校验用时 ≥ 19 秒，改过的客户端可以直接报「送达」。
 - 没有限流；`/api/rooms/bot` 每次新建一个 bot 用户，`ensureUser` 收到未知 id 也会新建用户，可被刷库。
 
 **十秒手速逻辑**

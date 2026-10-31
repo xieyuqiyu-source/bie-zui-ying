@@ -1,0 +1,31 @@
+<view class="coffin-play">
+  <view class="hud">
+    <view class="hud-panel">
+      <view class="hud-side" style="background: {{sideColor}}">{{sideName}}</view>
+      <text class="hud-time">{{timeText}}</text>
+      <text class="hud-status">{{statusText}}</text>
+    </view>
+    <view class="live-row {{bothOnline ? 'is-online' : ''}}">
+      <view class="live-dot"></view>
+      <text>{{liveText}}</text>
+    </view>
+  </view>
+
+  <canvas id="scene" type="2d" class="scene"></canvas>
+
+  <view wx:if="{{banner}}" class="banner">
+    <view class="banner-title">{{banner.title}}</view>
+    <view class="banner-sub">{{banner.sub}}</view>
+  </view>
+
+  <view class="controls">
+    <view
+      wx:for="{{poses}}"
+      wx:key="id"
+      class="pose-button {{myPose === item.id ? 'is-active' : ''}}"
+      data-pose="{{item.id}}"
+      bindtouchstart="pressPose"
+    >{{item.label}}</view>
+  </view>
+  <view class="hint">{{hint}}</view>
+</view>

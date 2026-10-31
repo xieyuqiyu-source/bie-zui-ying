@@ -30,7 +30,7 @@ interface MatchRow extends RowDataPacket {
   player_a_score: number;
   player_b_score: number;
   winner_id?: string | null;
-  result_type: "win" | "draw";
+  result_type: Match["resultType"];
   duration_seconds: number;
   trash_talk: string;
   created_at: Date;
@@ -189,9 +189,11 @@ async function settleMatch(room: Room, owner: User, guest: User) {
 
   const judgement = game.judge(submissionOf(room.owner), submissionOf(guestPlayer), roles);
   const { ownerScore, guestScore } = judgement;
-  const ownerWon = judgement.winner === "owner";
-  const guestWon = judgement.winner === "guest";
-  const winnerId = ownerWon ? owner.id : guestWon ? guest.id : undefined;
+  const teamWon = judgement.team === "win";
+  const teamLost = judgement.team === "lose";
+  const ownerWon = judgement.winner === "owner" || teamWon;
+  const guestWon = judgement.winner === "guest" || teamWon;
+  const winnerId = judgement.winner === "owner" ? owner.id : judgement.winner === "guest" ? guest.id : undefined;
   const trashTalk = game.trashTalk
     ? game.trashTalk(judgement, roles)
     : winnerId
@@ -207,7 +209,7 @@ async function settleMatch(room: Room, owner: User, guest: User) {
     playerAScore: ownerScore,
     playerBScore: guestScore,
     winnerId,
-    resultType: winnerId ? "win" : "draw",
+    resultType: teamWon ? "coop_win" : teamLost ? "coop_lose" : winnerId ? "win" : "draw",
     durationSeconds: game.durationSeconds,
     trashTalk,
     createdAt: nowIso()
@@ -250,11 +252,14 @@ async function settleMatch(room: Room, owner: User, guest: User) {
   }
 
   const outcomeOf = (won: boolean, lost: boolean): "win" | "loss" | "draw" => (won ? "win" : lost ? "loss" : "draw");
+  const ownerLost = judgement.winner === "guest" || teamLost;
+  const guestLost = judgement.winner === "owner" || teamLost;
+  const countScore = !game.cooperative || teamWon;
 
   await insertMatch(match);
   await Promise.all([
-    rankedMatch ? gameStatsService.recordResult(owner.id, game.id, outcomeOf(ownerWon, guestWon), ownerScore) : undefined,
-    rankedMatch ? gameStatsService.recordResult(guest.id, game.id, outcomeOf(guestWon, ownerWon), guestScore) : undefined,
+    rankedMatch ? gameStatsService.recordResult(owner.id, game.id, outcomeOf(ownerWon, ownerLost), countScore ? ownerScore : null) : undefined,
+    rankedMatch ? gameStatsService.recordResult(guest.id, game.id, outcomeOf(guestWon, guestLost), countScore ? guestScore : null) : undefined,
     writeLegacyStats ? userService.saveUserStats(owner) : undefined,
     writeLegacyStats ? userService.saveUserStats(guest) : undefined,
     saveRoom(room)
@@ -272,6 +277,7 @@ async function loadPlayers(room: Room) {
 
 function fillBotScores(room: Room, owner: User, guest: User) {
   const game = roomGame(room);
+  if (!game.botSubmission) return;
   if (guest.kind === "bot" && room.guest!.score === undefined) {
     applySubmission(room.guest!, game.botSubmission(room.guest!.role));
   }
@@ -307,6 +313,7 @@ export const roomService = {
 
   async createBotRoom(owner: User, bot: User, gameId: string = DEFAULT_GAME_ID, role?: string) {
     const game = getGame(gameId);
+    if (!game.botSubmission) throw new Error("BOT_NOT_SUPPORTED");
     const { playStartAt, playEndsAt } = playWindow(game);
     const playerRole = ownerRole(game, role);
     const room: Room = {
@@ -384,6 +391,15 @@ export const roomService = {
       });
     }
     return room ? serializeRoom(room) : undefined;
+  },
+
+  // Which seat a user holds, for checking who may send which live message. Read once per
+  // connection, so it skips the lock and the overdue check.
+  async seatOf(roomId: string, userId: string) {
+    const room = await loadRoom(roomId);
+    if (!room) return undefined;
+    const seat = room.owner.userId === userId ? "owner" : room.guest?.userId === userId ? "guest" : undefined;
+    return seat ? { seat, gameId: room.gameId ?? DEFAULT_GAME_ID } : undefined;
   },
 
   async getMatch(roomId: string) {

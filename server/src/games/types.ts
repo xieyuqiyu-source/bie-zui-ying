@@ -23,6 +23,8 @@ export interface Judgement {
   ownerScore: number;
   guestScore: number;
   winner: "owner" | "guest" | null;
+  // Cooperative games only: both players win or lose together. winner is then null.
+  team?: "win" | "lose";
   // Game-specific numbers for the result page, e.g. when the runner reached the door.
   detail?: Record<string, number>;
 }
@@ -39,9 +41,13 @@ export interface GameDefinition {
   roles?: readonly [string, string];
   // "higher" for points, "lower" for things like reaction time. Drives best_score.
   betterScore: "higher" | "lower";
+  // Both players are on one team (see Judgement.team). Only a won match's score counts
+  // toward best_score, so a quick failure can't set a "best time".
+  cooperative?: boolean;
   // Clamp and validate what the client sent; never trust it as-is.
   normalizeSubmission(raw: RawSubmission, role?: string): Submission;
-  botSubmission(role?: string): Submission;
+  // Games without one can't be played against a bot.
+  botSubmission?(role?: string): Submission;
   // owner/guest are undefined when that player never submitted.
   judge(owner: Submission | undefined, guest: Submission | undefined, roles: RoleContext): Judgement;
   trashTalk?(judgement: Judgement, roles: RoleContext): string;

@@ -1,6 +1,20 @@
 import type { WebSocket } from "@fastify/websocket";
 import { roomService } from "./roomService.js";
 
+// 双人抬棺 live messages. The owner (front bearer) runs the physics and streams numeric
+// snapshots; the guest (rear bearer) only sends its pose. See miniprogram/pages/coffin/sync.js.
+const COFFIN_POSES = new Set(["crouch", "half", "stand", "jump"]);
+const COFFIN_STATE_LENGTH = 10;
+const COFFIN_END_LENGTH = 4;
+
+function numberArray(value: unknown, length: number) {
+  if (!Array.isArray(value) || value.length !== length) return undefined;
+  return value.map((item) => {
+    const n = Number(item);
+    return Number.isFinite(n) ? Math.round(Math.max(-100000, Math.min(100000, n)) * 1000) / 1000 : 0;
+  });
+}
+
 type RoomClient = {
   socket: WebSocket;
   userId: string;
@@ -37,10 +51,29 @@ export const roomSocketService = {
       roomClients.set(roomId, new Map());
     }
     roomClients.get(roomId)!.set(socket, { socket, userId });
+    // Looked up once; only the coffin messages need it.
+    let seat: Promise<Awaited<ReturnType<typeof roomService.seatOf>>> | undefined;
+    const seatOf = () => (seat ??= roomService.seatOf(roomId, userId).catch(() => undefined));
 
     socket.on("message", (raw: { toString(): string }) => {
       try {
-        const message = JSON.parse(raw.toString()) as { type?: string; score?: number; d?: number };
+        const message = JSON.parse(raw.toString()) as { type?: string; score?: number; d?: number; pose?: string; v?: unknown };
+
+        if (message.type === "coffin:input" || message.type === "coffin:state" || message.type === "coffin:end") {
+          const type = message.type;
+          seatOf().then((info) => {
+            if (!info || info.gameId !== "coffin") return;
+            if (type === "coffin:input") {
+              if (info.seat !== "guest" || !COFFIN_POSES.has(String(message.pose))) return;
+              broadcastRaw(roomId, { type, userId, pose: message.pose, sentAt: Date.now() });
+              return;
+            }
+            if (info.seat !== "owner") return;
+            const v = numberArray(message.v, type === "coffin:state" ? COFFIN_STATE_LENGTH : COFFIN_END_LENGTH);
+            if (v) broadcastRaw(roomId, { type, userId, v, sentAt: Date.now() });
+          });
+          return;
+        }
 
         if (message.type === "rematch:invite") {
           broadcastRaw(roomId, {

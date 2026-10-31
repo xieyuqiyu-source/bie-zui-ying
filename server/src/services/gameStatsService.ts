@@ -41,7 +41,8 @@ function rowToStats(row: RankingRow): GameStats {
 
 export const gameStatsService = {
   // Increments in SQL rather than read-modify-write, so concurrent settlements can't lose updates.
-  async recordResult(userId: string, gameId: string, outcome: Outcome, score: number) {
+  // A null score counts the match but leaves best_score alone.
+  async recordResult(userId: string, gameId: string, outcome: Outcome, score: number | null) {
     const game = getGame(gameId);
     const bestFn = game.betterScore === "higher" ? "GREATEST" : "LEAST";
     const win = outcome === "win" ? 1 : 0;
@@ -60,7 +61,7 @@ export const gameStatsService = {
         draws = draws + :draw,
         best_streak = IF(:win = 1, GREATEST(best_streak, current_streak + 1), best_streak),
         current_streak = IF(:win = 1, current_streak + 1, 0),
-        best_score = ${bestFn}(COALESCE(best_score, :score), :score),
+        best_score = IF(:score IS NULL, best_score, ${bestFn}(COALESCE(best_score, :score), :score)),
         total_matches = total_matches + 1,
         updated_at = :updatedAt`,
       {

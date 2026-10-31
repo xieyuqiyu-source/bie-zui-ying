@@ -1,0 +1,25 @@
+<view class="page coffin-lobby">
+  <view class="brand">双人抬棺</view>
+  <view class="subtitle">两个人一起抬，20 秒送到坑边，把人稳稳倒进去。</view>
+
+  <view class="taunt">{{taunt}}</view>
+
+  <view class="section-title">怎么玩</view>
+  <view class="roles">
+    <view class="role comic-panel is-active">
+      <view class="role-glyph">前</view>
+      <view class="role-name">建房的抬前面</view>
+      <view class="role-copy">上坡蹲下，下坡站直。到了坑边先蹲，好让人往前滑。</view>
+    </view>
+    <view class="role comic-panel is-active">
+      <view class="role-glyph">后</view>
+      <view class="role-name">兄弟抬后面</view>
+      <view class="role-copy">上坡站直，下坡蹲下。到了坑边猛地站起来或者跳，把人送进坑。</view>
+    </view>
+  </view>
+  <view class="role-note">每人四个按钮：蹲下、半蹲、直立、跳。起身太猛会把人颠飞，棺材太歪人会滑下去。人掉到地上，两个人一起输。</view>
+
+  <button class="primary-button" loading="{{creating}}" bindtap="createRoom">开房，叫兄弟来抬</button>
+  <button class="secondary-button" bindtap="goSandbox">一个人先练练手感</button>
+  <button class="secondary-button" bindtap="goRanking">排行榜</button>
+</view>
