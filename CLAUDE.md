@@ -117,6 +117,7 @@ waiting ──双方 ready──> countdown（3 秒）──> playing（10 秒�
 ## 4. 约定
 
 ### 通用
+- 和用户对话尽量用中文回复（用户在学中文）。代码、命令、文件名、报错原文保持原样。
 - 文案、注释、提交信息：用户可见文案中文，代码标识符英文。提交信息英文，祈使句标题。
 - 不要做没被要求的重构。顺手发现的问题记到第 7 节或告诉用户。
 
@@ -179,19 +180,23 @@ npm run typecheck      # 提交前必须通过
 | Redis | 本机 6379 |
 | 证书 | Let's Encrypt，certbot.timer 自动续期 |
 
-部署（目前是手动；以下步骤是根据服务器目录结构整理的，**还没实际跑过**，第一次用时逐步确认）：
+部署（手动；2026-10-31 按下面步骤跑通过一次）：
 ```bash
-# 本地
-cd server && npm run typecheck
-rsync -av --exclude node_modules --exclude dist --exclude .env --exclude uploads ./ aitools-server:/opt/bie-zui-ying/server/
-# 服务器
+# 本地：只部署已提交的代码，并写入 VERSION 方便查线上版本
+cd server && npm run typecheck && cd ..
+rm -rf /tmp/bzy-deploy && mkdir -p /tmp/bzy-deploy && git archive HEAD server | tar x -C /tmp/bzy-deploy
+git rev-parse --short HEAD > /tmp/bzy-deploy/server/VERSION
+# 服务器：先备份库和旧代码
+ssh aitools-server 'TS=$(date +%Y%m%d-%H%M%S); mkdir -p /root/bie-zui-ying-backups && mysqldump --defaults-file=/root/.my.cnf --single-transaction bie_zui_ying | gzip > /root/bie-zui-ying-backups/db-$TS.sql.gz && tar czf /root/bie-zui-ying-backups/server-$TS.tgz -C /opt/bie-zui-ying server/dist server/src server/package.json server/.env'
+rsync -av --exclude node_modules --exclude dist --exclude .env --exclude uploads /tmp/bzy-deploy/server/ aitools-server:/opt/bie-zui-ying/server/
 ssh aitools-server 'cd /opt/bie-zui-ying/server && npm ci && npm run build && systemctl restart bie-zui-ying && sleep 3 && curl -s localhost:8787/health'
 ```
 - 部署、重启、改库都是线上操作，**先问用户**。
 - `/health` 不查数据库，判断服务是否真的正常要再请求 `/api/rankings`。
 - 服务器上同时跑着其他项目（idea-pool、nginx 上其他站点、PostgreSQL、docker 等），不要动它们。
-- 2026-10-31：MySQL 原数据盘到期被回收，已在系统盘重建空库；旧盘的 fstab 条目已注释，备份在 `/etc/fstab.bak-20261031`。服务器上**没有数据库备份**。
-- 截至 2026-10-31，线上运行的是 `4533b1a`（7 月 11 日）的代码，`1d3c4e6` 之后的提交还没部署。
+- 2026-10-31：MySQL 原数据盘到期被回收，已在系统盘重建空库；旧盘的 fstab 条目已注释，备份在 `/etc/fstab.bak-20261031`。
+- 部署前的手动备份在服务器 `/root/bie-zui-ying-backups/`（和数据库在同一块盘上，盘坏了一起没）。还没有定时备份。
+- 线上版本看 `/opt/bie-zui-ying/server/VERSION`。2026-10-31 部署的是 `07e07ac`。
 
 ---
 
