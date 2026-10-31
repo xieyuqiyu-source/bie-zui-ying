@@ -25,7 +25,7 @@ const GAMES = [
     glyph: "棺",
     accent: "#5b3a29",
     tagline: "两人一前一后抬着走，稳住别把人颠下来，最后倒进坑里。",
-    tags: ["双人合作", "物理", "20 秒"],
+    tags: ["双人合作", "物理", "27 秒"],
     entry: "/pages/coffin/lobby/lobby"
   },
   {

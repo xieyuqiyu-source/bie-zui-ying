@@ -1,6 +1,6 @@
 <view class="page coffin-lobby">
   <view class="brand">双人抬棺</view>
-  <view class="subtitle">两个人一起抬，20 秒送到坑边，把人稳稳倒进去。</view>
+  <view class="subtitle">两个人一起抬，翻坡、过坑、钻树枝，把人稳稳倒进坑里。</view>
 
   <view class="taunt">{{taunt}}</view>
 
@@ -17,7 +17,7 @@
       <view class="role-copy">上坡站直，下坡蹲下。到了坑边猛地站起来或者跳，把人送进坑。</view>
     </view>
   </view>
-  <view class="role-note">每人四个按钮：蹲下、半蹲、直立、跳。起身太猛会把人颠飞，棺材太歪人会滑下去。人掉到地上，两个人一起输。</view>
+  <view class="role-note">每人四个按钮：蹲下、半蹲、直立、跳。起身太猛会把人颠飞，棺材太歪人会滑下去，过树枝要两个人一起蹲。人掉到地上，两个人一起输。</view>
 
   <button class="primary-button" loading="{{creating}}" bindtap="createRoom">开房，叫兄弟来抬</button>
   <button class="secondary-button" bindtap="goSandbox">一个人先练练手感</button>

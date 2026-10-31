@@ -43,14 +43,42 @@ function createBearer(x, rules) {
   return { x, pose: "half", h, vh: 0, jumpLeft: 0, lastChangeAt: -1 };
 }
 
-function shoulder(bearer, rules) {
-  return { x: bearer.x, y: groundY(bearer.x, rules) + bearer.h };
+// Where the team stops: the front bearer at the pit edge.
+function stopAt(rules) {
+  return rules.PIT_X - rules.PIT_MARGIN - rules.BEARER_GAP;
+}
+
+// 0..1, how hard the team is walking at rear position s. Only depends on s, so the guest can
+// recompute it from a broadcast state.
+function walkFactor(s, rules) {
+  const r = rules || RULES;
+  return Math.min(1, Math.sqrt(Math.max(0, stopAt(r) - s) / r.BRAKE_DISTANCE));
+}
+
+// Walking phase in steps; each bearer's shoulder dips once per step, out of phase.
+function walkPhase(s, rules) {
+  return s / (rules || RULES).STRIDE;
+}
+
+function bob(s, who, rules) {
+  const r = rules || RULES;
+  const phase = walkPhase(s, r) * Math.PI + (who === "front" ? Math.PI / 2 : 0);
+  return -r.WALK_BOB * Math.abs(Math.sin(phase)) * walkFactor(s, r);
+}
+
+// World height of a bearer's shoulder.
+function shoulderY(x, h, s, who, rules) {
+  return groundY(x, rules) + h + bob(s, who, rules);
+}
+
+function shoulder(state, who) {
+  const bearer = state[who];
+  return { x: bearer.x, y: shoulderY(bearer.x, bearer.h, state.s, who, state.rules) };
 }
 
 function boardFrame(state) {
-  const rules = state.rules;
-  const rear = shoulder(state.rear, rules);
-  const front = shoulder(state.front, rules);
+  const rear = shoulder(state, "rear");
+  const front = shoulder(state, "front");
   const dx = front.x - rear.x;
   const dy = front.y - rear.y;
   const length = Math.sqrt(dx * dx + dy * dy);
@@ -80,7 +108,7 @@ function createWorld(rules) {
     walkSpeed: r.WALK_SPEED,
     rear: createBearer(0, r),
     front: createBearer(r.BEARER_GAP, r),
-    body: { x: 0, y: 0, vx: 0, vy: 0, onBoard: true, airborne: false, tipped: false, angle: 0, spin: 0 },
+    body: { x: 0, y: 0, vx: 0, vy: 0, onBoard: true, airborne: false, tipped: false, knocked: false, angle: 0, spin: 0 },
     result: null
   };
   const frame = boardFrame(state);
@@ -127,10 +155,8 @@ function stepBearer(bearer, dt, rules) {
 
 function stepWalk(state, dt) {
   const rules = state.rules;
-  const stopAt = rules.PIT_X - rules.PIT_MARGIN - rules.BEARER_GAP;
-  const remaining = Math.max(0, stopAt - state.s);
-  state.walkSpeed = rules.WALK_SPEED * Math.min(1, Math.sqrt(remaining / rules.BRAKE_DISTANCE));
-  state.s = Math.min(stopAt, state.s + state.walkSpeed * dt);
+  state.walkSpeed = rules.WALK_SPEED * walkFactor(state.s, rules);
+  state.s = Math.min(stopAt(rules), state.s + state.walkSpeed * dt);
   state.rear.x = state.s;
   state.front.x = state.s + rules.BEARER_GAP;
 }
@@ -163,8 +189,9 @@ function collideBoard(state, frame, prev, dt) {
   let rvy = body.vy - bvy;
 
   body.onBoard = false;
-  // Coming down onto the rim of an end wall (thrown sideways while airborne): over it goes.
-  if (!body.tipped && body.airborne && Math.abs(along) > wallAt && height < rules.WALL_HEIGHT && rvx * frame.nx + rvy * frame.ny < 0) {
+  // Coming down with its middle over an end wall (thrown sideways while airborne): over it
+  // goes. Landing just inside is caught by the wall below.
+  if (!body.tipped && body.airborne && Math.abs(along) > rules.RIM_AT && height < rules.WALL_HEIGHT && rvx * frame.nx + rvy * frame.ny < 0) {
     body.tipped = true;
     body.spin = Math.sign(along) * -6;
   }
@@ -210,10 +237,35 @@ function collideBoard(state, frame, prev, dt) {
   body.vx = rvx + bvx;
   body.vy = rvy + bvy;
   // Airborne means clear of the walls; only then can it land on a rim.
-  if (body.onBoard) body.airborne = false;
-  else if (height > rules.WALL_HEIGHT) body.airborne = true;
+  if (body.onBoard) {
+    body.airborne = false;
+  } else if (height > rules.WALL_HEIGHT && !body.airborne) {
+    body.airborne = true;
+    // Leaving the board while sliding sets it tumbling.
+    const vt = rvx * frame.ux + rvy * frame.uy;
+    body.spin = clamp(-vt * 4 + (frame.angle - prev.angle) / dt, -9, 9);
+  }
   if (body.onBoard && !body.tipped) {
-    body.angle = frame.angle;
+    // Lying on the board, swaying a little with how fast it slides.
+    const vt = rvx * frame.ux + rvy * frame.uy;
+    body.angle = frame.angle + clamp(-vt * 0.25, -0.3, 0.3);
+  }
+}
+
+// A low branch sweeps the body off backwards if it rides too high.
+function hitBranches(state) {
+  const rules = state.rules;
+  const body = state.body;
+  if (body.knocked) return;
+  for (const branch of rules.BRANCHES) {
+    if (Math.abs(body.x - branch.x) > branch.width / 2) continue;
+    if (body.y + rules.BODY_THICKNESS <= groundY(branch.x, rules) + branch.clearance) continue;
+    body.knocked = true;
+    body.tipped = true;
+    body.vx -= rules.WALK_SPEED + 2.2;
+    body.vy = Math.max(body.vy, 0) + 1.2;
+    body.spin = 7;
+    return;
   }
 }
 
@@ -234,13 +286,14 @@ function step(state) {
   body.y += body.vy * dt;
   if (!body.onBoard || body.tipped) body.angle += body.spin * dt;
   collideBoard(state, frame, state.prevFrame, dt);
+  hitBranches(state);
   state.prevFrame = frame;
 
   const inPit = body.x > rules.PIT_X && body.x < rules.PIT_X + rules.PIT_WIDTH;
   if (inPit && body.y < -0.2) {
     finish(state, "win", "pit");
   } else if (body.y < groundY(body.x, rules) + 0.12) {
-    finish(state, "lose", body.tipped ? "tipped" : "thrown");
+    finish(state, "lose", body.knocked ? "branch" : body.tipped ? "tipped" : "thrown");
   } else if (state.t >= rules.TIME_LIMIT_SECONDS) {
     finish(state, "lose", "timeout");
   }
@@ -267,6 +320,9 @@ function snapshot(state) {
 module.exports = {
   RULES,
   groundY,
+  shoulderY,
+  walkPhase,
+  walkFactor,
   createWorld,
   setPose,
   step,

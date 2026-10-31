@@ -13,7 +13,8 @@ const POSES = [
 const REASON_TEXT = {
   thrown: "起太猛，人直接飞出去了。",
   tipped: "棺材歪成滑梯，人顺着溜下去了。",
-  timeout: "磨磨蹭蹭，天都黑了还没下葬。"
+  timeout: "磨磨蹭蹭，天都黑了还没下葬。",
+  branch: "过树枝不低头，人被刮下去了。"
 };
 
 const BLAME_TEXT = { front: "锅归前面那位。", rear: "锅归后面那位。" };
@@ -104,7 +105,7 @@ Page({
     this.lastAt = now;
 
     const snap = physics.snapshot(world);
-    drawFrame(this.ctx, this.canvasW, this.canvasH, snap);
+    this.view = drawFrame(this.ctx, this.canvasW, this.canvasH, snap, this.view);
 
     const tenths = Math.floor(world.t * 10);
     if (tenths !== this.shownTenths) {

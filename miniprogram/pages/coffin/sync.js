@@ -2,7 +2,7 @@
 // `coffin:state` with v = encodeState(world) every SEND_MS; the guest rebuilds a drawable
 // snapshot with decodeState and interpolates between them. The server only checks that v
 // is an array of 10 numbers (server/src/services/roomSocketService.ts).
-const { groundY } = require("./physics.js");
+const { shoulderY } = require("./physics.js");
 const RULES = require("./rules.js");
 
 const SEND_MS = 50;
@@ -43,8 +43,8 @@ function decodeState(v) {
   const [t, s, rearH, frontH, bodyX, bodyY, bodyAngle, onBoard, rearCode, frontCode] = v;
   const rear = bearerOf(s, rearH, rearCode);
   const front = bearerOf(s + RULES.BEARER_GAP, frontH, frontCode);
-  const rearY = groundY(rear.x) + rear.h;
-  const frontY = groundY(front.x) + front.h;
+  const rearY = shoulderY(rear.x, rear.h, s, "rear");
+  const frontY = shoulderY(front.x, front.h, s, "front");
   return {
     t,
     rear,

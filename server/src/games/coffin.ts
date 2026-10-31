@@ -10,11 +10,11 @@ import type { GameDefinition, Judgement, RoleContext, Submission } from "./types
 //
 // The server can't re-run the physics, so a modified owner client can claim any win that
 // is not faster than MIN_CLEAR_MS. Same trust level as every other score for now.
-const DURATION_SECONDS = 25;
-// The team needs about 20 s just to walk to the pit; nothing real finishes sooner.
-const MIN_CLEAR_MS = 19000;
+const DURATION_SECONDS = 27;
+// The team needs about 21 s just to walk to the pit; nothing real finishes sooner.
+const MIN_CLEAR_MS = 20000;
 
-export const COFFIN_REASONS = { pit: 1, thrown: 2, tipped: 3, timeout: 4, absent: 5 } as const;
+export const COFFIN_REASONS = { pit: 1, thrown: 2, tipped: 3, timeout: 4, absent: 5, branch: 6 } as const;
 export const COFFIN_BLAME = { none: 0, front: 1, rear: 2 } as const;
 
 const winTalks = [
@@ -27,7 +27,8 @@ const loseTalks: Record<number, string[]> = {
   [COFFIN_REASONS.thrown]: ["起太猛，人直接飞了。", "这一抬，抬出了蹦床的效果。"],
   [COFFIN_REASONS.tipped]: ["棺材歪成滑梯，人顺着溜下去了。", "倾斜角度很有想法，人很没办法。"],
   [COFFIN_REASONS.timeout]: ["磨磨蹭蹭，天都黑了还没下葬。", "走到坑边就不会倒了？"],
-  [COFFIN_REASONS.absent]: ["前面那位半路跑了。"]
+  [COFFIN_REASONS.absent]: ["前面那位半路跑了。"],
+  [COFFIN_REASONS.branch]: ["树枝都看见了，你俩没看见。", "低头这么简单的事，愣是没做到。"]
 };
 
 const blameTalks: Record<number, string> = {

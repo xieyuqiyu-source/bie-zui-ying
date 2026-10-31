@@ -198,7 +198,7 @@ Page({
   tick() {
     const now = Date.now();
     const snap = this.isHost ? this.tickHost(now) : this.tickGuest(now);
-    drawFrame(this.ctx, this.canvasW, this.canvasH, snap);
+    this.view = drawFrame(this.ctx, this.canvasW, this.canvasH, snap, this.view);
     if (now - this.lastHudAt >= HUD_MS) {
       this.lastHudAt = now;
       this.updateHud(now, snap);

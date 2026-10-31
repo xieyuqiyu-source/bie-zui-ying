@@ -8,7 +8,8 @@ const REASON_TEXT = {
   [REASON_CODES.thrown]: "人被颠飞了",
   [REASON_CODES.tipped]: "人顺着棺材滑下去了",
   [REASON_CODES.timeout]: "时间到了还没下葬",
-  [REASON_CODES.absent]: "前面那位掉线了"
+  [REASON_CODES.absent]: "前面那位掉线了",
+  [REASON_CODES.branch]: "人被树枝刮下去了"
 };
 
 Page({
